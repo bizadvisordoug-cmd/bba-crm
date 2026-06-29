@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Zap, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
@@ -79,9 +80,17 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Password
+                </label>
+                <Link
+                  href="/auth/reset-password"
+                  className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
