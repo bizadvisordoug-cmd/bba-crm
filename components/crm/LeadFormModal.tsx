@@ -107,13 +107,15 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
     e.preventDefault()
     setError('')
 
-    // Validate step 1: either select existing or create new owner and business
-    if (!form.owner_id && (!form.new_owner_name || !form.new_owner_email)) {
-      setError('Either select an owner or provide name and email for a new one')
+    // Require owner: either select existing or fill in name for new one
+    if (!form.owner_id && !form.new_owner_name.trim()) {
+      setError('Provide an owner name or select an existing owner')
       return
     }
-    if (!form.business_id && !form.new_business_name) {
-      setError('Either select a business or provide a name for a new one')
+    // Business is only required when an existing owner is selected
+    // (business section is hidden when creating a new owner)
+    if (form.owner_id && !form.business_id && !form.new_business_name.trim()) {
+      setError('Select an existing business or provide a name for a new one')
       return
     }
 
@@ -253,7 +255,8 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
                 <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                   <Input label="Name *" value={form.new_owner_name} onChange={e => set('new_owner_name', e.target.value)} />
                   <Input label="Phone" value={form.new_owner_phone} onChange={e => set('new_owner_phone', e.target.value)} />
-                  <Input label="Email *" type="email" value={form.new_owner_email} onChange={e => set('new_owner_email', e.target.value)} />
+                  <Input label="Email" type="email" value={form.new_owner_email} onChange={e => set('new_owner_email', e.target.value)} />
+                  <Input label="Business Name" value={form.new_business_name} onChange={e => set('new_business_name', e.target.value)} className="col-span-3" placeholder="Optional — can be added later" />
                 </div>
               )}
             </div>
@@ -295,8 +298,10 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
               type="submit"
               variant="primary"
               disabled={
-                !form.owner_id && !form.new_owner_name ||
-                !form.business_id && !form.new_business_name
+                // Must have owner: existing selection OR new name filled
+                (!form.owner_id && !form.new_owner_name.trim()) ||
+                // Business only required when picking an existing owner
+                (!!form.owner_id && !form.business_id && !form.new_business_name.trim())
               }
             >
               Next <ChevronRight size={14} className="ml-1" />
