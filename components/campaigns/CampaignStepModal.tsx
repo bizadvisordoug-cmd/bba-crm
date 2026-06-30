@@ -174,9 +174,10 @@ function parseBodyImages(body: string): ParsedBodyImg[] {
 interface BodyPreviewProps {
   body: string
   onEditImage: (img: ParsedBodyImg) => void
+  highlightStart?: number | null
 }
 
-function BodyPreview({ body, onEditImage }: BodyPreviewProps) {
+function BodyPreview({ body, onEditImage, highlightStart }: BodyPreviewProps) {
   const images = parseBodyImages(body)
 
   if (!body.trim()) {
@@ -194,6 +195,7 @@ function BodyPreview({ body, onEditImage }: BodyPreviewProps) {
         </p>
       )
     }
+    const highlighted = img.start === highlightStart
     nodes.push(
       <div
         key={`i${i}`}
@@ -204,7 +206,15 @@ function BodyPreview({ body, onEditImage }: BodyPreviewProps) {
           <img
             src={img.src}
             alt=""
-            style={{ width: img.width, height: img.height ?? 'auto', maxWidth: '100%', display: 'block', borderRadius: 4 }}
+            style={{
+              width: img.width,
+              height: img.height ?? 'auto',
+              maxWidth: '100%',
+              display: 'block',
+              borderRadius: 4,
+              boxShadow: highlighted ? '0 0 0 3px rgba(124,58,237,0.9), 0 0 24px rgba(124,58,237,0.6)' : 'none',
+              transition: 'box-shadow 0.3s ease',
+            }}
           />
           <span className="absolute inset-0 rounded bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
             <span className="text-[10px] text-white font-medium px-2 py-1 rounded bg-black/60">Click to edit</span>
@@ -262,6 +272,10 @@ export function CampaignStepModal({
 
   // Body image being configured before insertion
   const [pendingBodyImg, setPendingBodyImg] = useState<PendingBodyImg | null>(null)
+  // Offset of the image most recently inserted/updated in the body — drives the
+  // scroll-into-view + flash highlight in the Live Preview so it's never missed
+  const [highlightImgStart, setHighlightImgStart] = useState<number | null>(null)
+  const previewPanelRef = useRef<HTMLDivElement>(null)
 
   const [saving, setSaving]               = useState(false)
   const [deleting, setDeleting]           = useState(false)
@@ -292,6 +306,7 @@ export function CampaignStepModal({
     setConfirmDelete(false)
     setError('')
     setPendingBodyImg(null)
+    setHighlightImgStart(null)
     setHeaderNatural({ w: 0, h: 0 })
 
     if (nextForm.header_image_url) {
@@ -308,6 +323,15 @@ export function CampaignStepModal({
     img.onload = () => setHeaderNatural({ w: img.naturalWidth, h: img.naturalHeight })
     img.src = form.header_image_url
   }, [form.header_image_url])
+
+  // Draw the eye to the just-inserted/edited image: scroll the Live Preview into
+  // view and let the flash highlight run, then clear it.
+  useEffect(() => {
+    if (highlightImgStart == null) return
+    previewPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const timer = setTimeout(() => setHighlightImgStart(null), 1800)
+    return () => clearTimeout(timer)
+  }, [highlightImgStart])
 
   const set = (k: string, v: string | number | boolean) => setForm(f => ({ ...f, [k]: v }))
 
@@ -399,6 +423,7 @@ export function CampaignStepModal({
     if (editRange) {
       setForm(f => ({ ...f, body: f.body.slice(0, editRange.start) + tag + f.body.slice(editRange.end) }))
       setPendingBodyImg(null)
+      setHighlightImgStart(editRange.start)
       return
     }
 
@@ -408,6 +433,7 @@ export function CampaignStepModal({
       const next = body.slice(0, start) + '\n' + tag + '\n' + body.slice(end)
       return { ...f, body: next }
     })
+    setHighlightImgStart(start + 1) // +1 for the leading '\n' inserted before the tag
     setPendingBodyImg(null)
     requestAnimationFrame(() => {
       const newPos = start + tag.length + 2
@@ -813,8 +839,8 @@ export function CampaignStepModal({
                 <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Live Preview</span>
                 <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>How this will look in the email</span>
               </div>
-              <div className="rounded-xl border border-white/[0.08] p-4" style={{ background: '#ffffff' }}>
-                <BodyPreview body={form.body} onEditImage={editBodyImage} />
+              <div ref={previewPanelRef} className="rounded-xl border border-white/[0.08] p-4" style={{ background: '#ffffff' }}>
+                <BodyPreview body={form.body} onEditImage={editBodyImage} highlightStart={highlightImgStart} />
               </div>
             </div>
           )}
