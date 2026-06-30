@@ -9,11 +9,13 @@ import { interpolateTemplate } from '@/lib/utils'
 
 function buildHtmlEmail({
   headerImageUrl,
+  headerImageWidth,
   body,
   unsubLink,
   repName,
 }: {
   headerImageUrl?: string | null
+  headerImageWidth?: number | null
   body: string          // interpolated body (may contain <img> tags)
   unsubLink: string
   repName: string
@@ -32,11 +34,12 @@ function buildHtmlEmail({
     })
     .join('\n')
 
+  const hdrW = headerImageWidth ?? 600
   const headerRow = headerImageUrl
     ? `<tr>
         <td style="padding:0;line-height:0;">
-          <img src="${headerImageUrl}" width="600" alt=""
-               style="display:block;width:100%;max-width:600px;height:auto;border:0;">
+          <img src="${headerImageUrl}" width="${hdrW}" alt=""
+               style="display:block;width:${hdrW}px;max-width:100%;height:auto;border:0;">
         </td>
        </tr>`
     : ''
@@ -164,7 +167,8 @@ export async function POST(req: NextRequest) {
       const unsubLink = `${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?enrollment=${enrollmentId}`
 
       const htmlEmail = buildHtmlEmail({
-        headerImageUrl: currentStep.header_image_url ?? null,
+        headerImageUrl:   currentStep.header_image_url   ?? null,
+        headerImageWidth: currentStep.header_image_width ?? null,
         body,
         unsubLink,
         repName: rep.name || 'Your Advisor',

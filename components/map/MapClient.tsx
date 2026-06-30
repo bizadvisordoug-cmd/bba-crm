@@ -31,7 +31,7 @@ function toGeoJSON(leads: any[]) {
         properties: {
           id:     l.id,
           status: l.status,
-          label:  ((l.business_name as string) || '?').charAt(0).toUpperCase(),
+          label:  (l.business?.business_name || (l.business_name as string) || '?').charAt(0).toUpperCase(),
         },
       })),
   }

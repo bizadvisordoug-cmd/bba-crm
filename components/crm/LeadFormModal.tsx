@@ -164,9 +164,15 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
         businessId = newBusiness.id
       }
 
+      // Populate legacy scalar columns so map / CRM list work without join
+      const ownerName = form.new_owner_name.trim() || people.find(p => p.id === ownerId)?.name || ''
+      const bizName   = form.new_business_name.trim() || businesses.find(b => b.id === businessId)?.business_name || ''
+
       const payload = {
         owner_id: ownerId || null,
         business_id: businessId || null,
+        owner_name: ownerName || null,
+        business_name: bizName || null,
         address: form.address,
         city: form.city,
         state: form.state,

@@ -18,7 +18,7 @@ export default async function MapPage() {
 
   const query = supabase
     .from('leads')
-    .select('id, business_name, owner_name, address, city, state, zip, pipeline_stage, status, assigned_rep_id, pos_system, lat, lng, assigned_rep:users(id, name)')
+    .select('id, business_name, owner_name, address, city, state, zip, pipeline_stage, status, assigned_rep_id, pos_system, lat, lng, business:businesses(business_name), assigned_rep:users(id, name)')
     .not('lat', 'is', null)
 
   if (!isAdmin) query.eq('assigned_rep_id', user!.id)
