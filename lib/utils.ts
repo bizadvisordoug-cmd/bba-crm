@@ -72,7 +72,7 @@ export const REPS = [
 
 export const POS_SYSTEMS = ['Shift4 Dine', 'Stackably', 'Clover', 'Dejavoo', 'Spot On', 'Basic Terminal'] as const
 
-export const LEAD_SOURCES = ['Referral', 'Cold Call', 'Cold Email', 'Other'] as const
+export const LEAD_SOURCES = ['Referral', 'Cold Call', 'Cold Email', 'Trade Show', 'Other'] as const
 
 export function getRepById(id: string) {
   return REPS.find(r => r.id === id)
