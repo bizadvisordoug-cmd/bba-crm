@@ -58,6 +58,7 @@ export function CampaignsClient({
   // ── Modal state ──────────────────────────────────────────────────────────────
   const [enrollModal, setEnrollModal] = useState<any | null>(null)
   const [enrollLeadId, setEnrollLeadId] = useState('')
+  const [enrollLeadSearch, setEnrollLeadSearch] = useState('')
   const [enrolling, setEnrolling] = useState(false)
 
   // step modal: edit an existing step or add a new one
@@ -386,17 +387,83 @@ export function CampaignsClient({
       )}
 
       {/* ── Enroll modal ── */}
-      <Modal open={!!enrollModal} onClose={() => setEnrollModal(null)} title={`Enroll in: ${enrollModal?.name}`} size="sm">
+      <Modal open={!!enrollModal} onClose={() => { setEnrollModal(null); setEnrollLeadSearch(''); setEnrollLeadId('') }} title={`Enroll in: ${enrollModal?.name}`} size="sm">
         <div className="space-y-4">
-          <Select
-            label="Select Lead"
-            value={enrollLeadId}
-            onChange={e => setEnrollLeadId(e.target.value)}
-            options={leads.map(l => ({ value: l.id, label: `${l.business_name} — ${l.owner_name}` }))}
-            placeholder="Choose a lead..."
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Select Lead
+            </label>
+            <input
+              type="text"
+              placeholder="Search by business name, owner, or email..."
+              value={enrollLeadSearch}
+              onChange={e => setEnrollLeadSearch(e.target.value)}
+              className="h-9 w-full rounded-xl px-3 text-sm bg-white/[0.04] border border-white/[0.08] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-purple-500/10 transition-all duration-200"
+            />
+            {/* Dropdown list */}
+            {enrollLeadSearch || enrollLeadId ? (
+              <div className="max-h-64 overflow-y-auto rounded-xl bg-white/[0.04] border border-white/[0.08]">
+                {leads
+                  .filter(l => l.business_name && l.owner_name) // Filter out nulls
+                  .filter(l => {
+                    const search = enrollLeadSearch.toLowerCase()
+                    return (
+                      l.business_name?.toLowerCase().includes(search) ||
+                      l.owner_name?.toLowerCase().includes(search) ||
+                      l.email?.toLowerCase().includes(search)
+                    )
+                  })
+                  .slice(0, 20) // Limit to 20 results
+                  .map(l => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => {
+                        setEnrollLeadId(l.id)
+                        setEnrollLeadSearch('')
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm border-b border-white/[0.06] last:border-b-0 hover:bg-white/[0.08] transition-colors ${
+                        enrollLeadId === l.id ? 'bg-purple-500/20' : ''
+                      }`}
+                    >
+                      <div className="font-medium text-white">{l.business_name}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {l.owner_name} · {l.email || 'no email'}
+                      </div>
+                    </button>
+                  ))}
+                {leads.filter(l => l.business_name && l.owner_name).length === 0 && (
+                  <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                    No valid leads available
+                  </div>
+                )}
+                {enrollLeadSearch && leads.filter(l => l.business_name && l.owner_name).filter(l => {
+                  const search = enrollLeadSearch.toLowerCase()
+                  return (
+                    l.business_name?.toLowerCase().includes(search) ||
+                    l.owner_name?.toLowerCase().includes(search) ||
+                    l.email?.toLowerCase().includes(search)
+                  )
+                }).length === 0 && (
+                  <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                    No leads match "{enrollLeadSearch}"
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {enrollLeadId && (
+              <div className="px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-sm">
+                <div className="font-medium text-white">
+                  {leads.find(l => l.id === enrollLeadId)?.business_name}
+                </div>
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {leads.find(l => l.id === enrollLeadId)?.owner_name}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setEnrollModal(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setEnrollModal(null); setEnrollLeadSearch(''); setEnrollLeadId('') }}>Cancel</Button>
             <Button variant="primary" loading={enrolling} onClick={handleEnroll} disabled={!enrollLeadId}>
               Enroll Lead
             </Button>
