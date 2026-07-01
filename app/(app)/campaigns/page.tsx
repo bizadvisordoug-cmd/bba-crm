@@ -41,10 +41,19 @@ export default async function CampaignsPage() {
 
   const leadsQuery = supabase
     .from('leads')
-    .select('id, business_name, owner_name, email, assigned_rep_id')
+    .select('id, email, assigned_rep_id, owner:people(name), business:businesses(business_name)')
     .order('business_name')
   if (!isAdmin) leadsQuery.eq('assigned_rep_id', user!.id)
-  const { data: leads } = await leadsQuery
+  const { data: leadsRaw } = await leadsQuery
+
+  // Flatten the joins for easier access in the component
+  const leads = (leadsRaw || []).map(l => ({
+    id: l.id,
+    email: l.email,
+    assigned_rep_id: l.assigned_rep_id,
+    owner_name: l.owner?.name || '',
+    business_name: l.business?.business_name || '',
+  }))
 
   return (
     <CampaignsClient
