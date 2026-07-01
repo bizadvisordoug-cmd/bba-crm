@@ -498,14 +498,9 @@ export function CampaignStepModal({
         body:       form.body,
       }
 
-      // Guard columns added by later migrations — include only if already present
-      const urlColumnExists   = isEdit && step != null && 'header_image_url'   in step
-      const widthColumnExists = isEdit && step != null && 'header_image_width'  in step
-
-      if (form.type === 'email' && (urlColumnExists || !!form.header_image_url)) {
+      // Include header image data for email campaigns
+      if (form.type === 'email') {
         payload.header_image_url = form.header_image_url || null
-      }
-      if (form.type === 'email' && (widthColumnExists || form.header_image_width !== HEADER_MAX_W)) {
         payload.header_image_width = form.header_image_width || null
       }
 
