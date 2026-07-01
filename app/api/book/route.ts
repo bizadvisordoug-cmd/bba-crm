@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { createGCalEvent } from '@/lib/gcal'
 
 // Public endpoint — no auth required (booking pages are public).
@@ -26,7 +27,10 @@ export async function POST(req: NextRequest) {
 
   // Find the rep by matching the name slug (same transform as the booking page URL).
   // Also select google_calendar_token so we can push the booking to their GCal.
-  const { data: users } = await supabase.from('users').select('id, name, google_calendar_token')
+  // Uses the admin client (service role) — this route is hit by unauthenticated
+  // visitors, and public.users has no anon-readable policy (it holds SMTP/IMAP
+  // credentials and calendar tokens), so a normal anon-scoped client can't read it.
+  const { data: users } = await createAdminClient().from('users').select('id, name, google_calendar_token')
   const rep = (users ?? []).find(
     u => u.name.toLowerCase().replace(/\s+/g, '-') === repSlug
   )
