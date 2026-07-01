@@ -401,7 +401,7 @@ export function CampaignsClient({
               className="h-9 w-full rounded-xl px-3 text-sm bg-white/[0.04] border border-white/[0.08] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-purple-500/10 transition-all duration-200"
             />
             {/* Dropdown list */}
-            {enrollLeadSearch || enrollLeadId ? (
+            {!enrollLeadId || enrollLeadSearch ? (
               <div className="max-h-64 overflow-y-auto rounded-xl bg-white/[0.04] border border-white/[0.08]">
                 {leads
                   .filter(l => l.business_name && l.owner_name) // Filter out nulls
