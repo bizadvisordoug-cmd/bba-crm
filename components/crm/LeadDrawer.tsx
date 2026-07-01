@@ -13,6 +13,7 @@ import { Input, Select, Textarea } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { StageBadge, StatusBadge, Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
+import { NotesSection } from '@/components/crm/NotesSection'
 import { createClient } from '@/lib/supabase'
 import { formatDate, formatCurrency, formatPercent, isOverdue, PIPELINE_STAGES, POS_SYSTEMS, LEAD_SOURCES } from '@/lib/utils'
 import { geocodeAddress } from '@/lib/geocode'
@@ -593,27 +594,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
 
       {/* Notes Tab */}
       {activeTab === 'notes' && (
-        <div>
-          {editing ? (
-            <Textarea
-              value={form.notes || ''}
-              onChange={e => set('notes', e.target.value)}
-              className="min-h-[300px]"
-              placeholder="Add notes about this lead..."
-            />
-          ) : (
-            <div className="glass rounded-xl p-4 min-h-[200px]">
-              {lead.notes ? (
-                <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{lead.notes}</p>
-              ) : (
-                <p className="text-sm text-center py-12" style={{ color: 'var(--text-muted)' }}>
-                  No notes yet.{' '}
-                  <button className="text-purple-400 hover:underline" onClick={() => setEditing(true)}>Add a note →</button>
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        <NotesSection leadId={lead.id} currentUserId={currentUserId} />
       )}
 
       {/* Documents Tab */}
