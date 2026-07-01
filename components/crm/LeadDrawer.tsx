@@ -905,10 +905,62 @@ function DocumentsSection({ leadId }: { leadId: string }) {
 }
 
 function ActivitySection({ leadId }: { leadId: string }) {
+  const [activities, setActivities] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      setLoading(true)
+      const { data } = await supabase
+        .from('activity_log')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setActivities(data || [])
+      setLoading(false)
+    }
+    fetchActivities()
+  }, [leadId, supabase])
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    )
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="text-center py-12 text-[var(--text-muted)] text-sm">
+        <Clock size={32} className="mx-auto mb-2 opacity-30" />
+        Activity log for this lead will appear here.
+      </div>
+    )
+  }
+
   return (
-    <div className="text-center py-12 text-[var(--text-muted)] text-sm">
-      <Clock size={32} className="mx-auto mb-2 opacity-30" />
-      Activity log for this lead will appear here.
+    <div className="space-y-2">
+      {activities.map(activity => (
+        <div key={activity.id} className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-sm">
+          <div className="flex items-start gap-3">
+            <Clock size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-white font-medium">{activity.action}</div>
+              {activity.details && (
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }} className="mt-0.5">
+                  {activity.details}
+                </div>
+              )}
+              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                {new Date(activity.created_at).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
