@@ -276,5 +276,30 @@ export async function syncGCalEvents(userId: string, tokenValue: unknown, supaba
     }
   })
 
-  await supabase.from('appointments').insert(rows)
+  // ── Step 3: insert the fetched events ────────────────────────────────────
+  // A single bulk insert is fast, but this data comes from an external
+  // calendar we don't fully control — one bad/conflicting row (e.g. an
+  // exclusion-constraint hit) fails the whole statement atomically. Try the
+  // bulk path first; if it's rejected, fall back to inserting row-by-row so
+  // one bad event can't blank out every other real event in the sync.
+  const { error: bulkInsertErr } = await supabase.from('appointments').insert(rows)
+
+  if (!bulkInsertErr) {
+    console.log('[gcal sync] inserted', rows.length, 'rows successfully')
+    return
+  }
+
+  console.error('[gcal sync] bulk insert failed:', bulkInsertErr.message, '— retrying rows individually')
+  let inserted = 0
+  let failed = 0
+  for (const row of rows) {
+    const { error: rowErr } = await supabase.from('appointments').insert(row)
+    if (rowErr) {
+      failed++
+      console.error('[gcal sync] row insert failed —', row.title, '|', row.start_time, '| error:', rowErr.message)
+    } else {
+      inserted++
+    }
+  }
+  console.log('[gcal sync] individual retry complete — inserted:', inserted, 'failed:', failed, 'of', rows.length)
 }
