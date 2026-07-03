@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     // For each reminder setting, find stale leads
-    const emailsByRep: Record<string, { stage: string; leads: any[] }[]> = {}
+    const emailsByRep: Record<string, Record<string, any[]>> = {}
 
     for (const reminder of reminders) {
       if (!reminder.reminder_days) continue
@@ -47,34 +47,35 @@ export async function GET(req: NextRequest) {
           if (!repId) continue
 
           if (!emailsByRep[repId]) {
-            emailsByRep[repId] = []
+            emailsByRep[repId] = {}
           }
 
-          emailsByRep[repId].push({
-            stage: reminder.pipeline_stage,
-            lead,
-          })
+          if (!emailsByRep[repId][reminder.pipeline_stage]) {
+            emailsByRep[repId][reminder.pipeline_stage] = []
+          }
+
+          emailsByRep[repId][reminder.pipeline_stage].push(lead)
         }
       }
     }
 
     // Send emails to each rep
     let emailsSent = 0
-    for (const [repId, stageGroups] of Object.entries(emailsByRep)) {
-      const repEmail = stageGroups[0]?.lead?.assigned_rep?.email
-      if (!repEmail) continue
-
-      // Group by stage
-      const byStage: Record<string, any[]> = {}
-      for (const item of stageGroups) {
-        if (!byStage[item.stage]) byStage[item.stage] = []
-        byStage[item.stage].push(item.lead)
+    for (const [repId, stageMap] of Object.entries(emailsByRep)) {
+      // Get rep email from first lead's assigned_rep
+      let repEmail: string | null = null
+      for (const leads of Object.values(stageMap)) {
+        if (leads.length > 0 && leads[0].assigned_rep?.email) {
+          repEmail = leads[0].assigned_rep.email
+          break
+        }
       }
+      if (!repEmail) continue
 
       // Build email body
       let emailBody = `<h2>Pipeline Reminders — ${new Date().toLocaleDateString()}</h2><p>The following leads have been in their current stage for longer than your configured reminder threshold:</p>`
 
-      for (const [stage, leads] of Object.entries(byStage)) {
+      for (const [stage, leads] of Object.entries(stageMap)) {
         emailBody += `<h3>${stage} (${leads.length} leads)</h3><ul>`
         for (const lead of leads) {
           const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/crm?lead=${lead.id}`
