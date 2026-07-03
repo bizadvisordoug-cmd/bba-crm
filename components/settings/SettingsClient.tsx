@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   User, Mail, Phone, Users, Eye, EyeOff, Save, Check,
   MapPin, UserPlus, ChevronRight, Upload, Wifi, CheckCircle, AlertCircle,
-  DollarSign,
+  DollarSign, Clock,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -19,6 +19,7 @@ import { geocodeAddress } from '@/lib/geocode'
 import { TeamMemberModal } from './TeamMemberModal'
 import { InviteTeamModal } from './InviteTeamModal'
 import { CommissionsSettingsPanel } from './CommissionsSettingsPanel'
+import { PipelineRemindersPanel } from './PipelineRemindersPanel'
 
 interface SettingsClientProps {
   profile: any
@@ -30,7 +31,7 @@ type TestResult = { ok: boolean; message: string }
 
 export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: SettingsClientProps) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders'>('profile')
   const [profile, setProfile] = useState(initialProfile)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -214,6 +215,7 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
     { key: 'email',        label: 'Email',         icon: Mail   },
     { key: 'integrations', label: 'Integrations',  icon: Phone  },
     { key: 'map',          label: 'Map',            icon: MapPin },
+    ...(isAdmin ? [{ key: 'pipeline-reminders', label: 'Pipeline Reminders', icon: Clock }] : []),
     ...(isAdmin ? [{ key: 'team', label: 'Team', icon: Users }] : []),
     ...(isAdmin ? [{ key: 'commissions', label: 'Commissions', icon: DollarSign }] : []),
   ] as const
@@ -661,6 +663,11 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
                 {syncing ? 'Geocoding leads…' : 'Sync Map Pins'}
               </Button>
             </GlassCard>
+          )}
+
+          {/* Pipeline Reminders (admin only) */}
+          {activeTab === 'pipeline-reminders' && isAdmin && (
+            <PipelineRemindersPanel />
           )}
 
           {/* Commissions (admin only) */}
