@@ -11,7 +11,19 @@ interface ReminderSetting {
   pipeline_stage: string
   reminder_days: number | null
   enabled: boolean
+  user_id: string
 }
+
+const DEFAULT_STAGES = [
+  { stage: 'New Lead', days: 3 },
+  { stage: 'Contacted', days: 5 },
+  { stage: 'Appointment Set', days: 7 },
+  { stage: 'Contract Sent', days: 2 },
+  { stage: 'Signed', days: null },
+  { stage: 'Equipment Ordered', days: null },
+  { stage: 'Install Scheduled', days: null },
+  { stage: 'Active Client', days: null },
+]
 
 export function PipelineRemindersPanel() {
   const [settings, setSettings] = useState<ReminderSetting[]>([])
@@ -26,15 +38,38 @@ export function PipelineRemindersPanel() {
       setLoading(true)
       setError(null)
       try {
-        const { data, error: fetchError } = await supabase
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Not authenticated')
+
+        // Fetch user's settings
+        const { data: existingSettings, error: fetchError } = await supabase
           .from('pipeline_reminder_settings')
           .select('*')
-          .order('id')
+          .eq('user_id', user.id)
+          .order('pipeline_stage')
         if (fetchError) throw fetchError
-        setSettings(data || [])
+
+        // If user has no settings, create defaults
+        if (!existingSettings || existingSettings.length === 0) {
+          const defaultSettings = DEFAULT_STAGES.map(({ stage, days }) => ({
+            pipeline_stage: stage,
+            reminder_days: days,
+            enabled: days !== null,
+            user_id: user.id,
+          }))
+
+          const { data: newSettings, error: insertError } = await supabase
+            .from('pipeline_reminder_settings')
+            .insert(defaultSettings)
+            .select()
+          if (insertError) throw insertError
+          setSettings(newSettings || [])
+        } else {
+          setSettings(existingSettings)
+        }
       } catch (err) {
         console.error('Failed to fetch reminder settings:', err)
-        setError('Failed to load pipeline reminder settings. Please ensure the migration has been applied.')
+        setError('Failed to load pipeline reminder settings.')
       } finally {
         setLoading(false)
       }

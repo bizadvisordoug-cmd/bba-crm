@@ -14,64 +14,81 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
 
-    // Get all reminder settings
+    // Get all users with enabled reminders
     const { data: reminders } = await supabase
       .from('pipeline_reminder_settings')
-      .select('*')
+      .select('user_id, pipeline_stage, reminder_days, enabled')
       .eq('enabled', true)
 
     if (!reminders || reminders.length === 0) {
       return NextResponse.json({ message: 'No reminders enabled' })
     }
 
-    // For each reminder setting, find stale leads
-    const emailsByRep: Record<string, Record<string, any[]>> = {}
-
+    // Group by user
+    const remindersByUser: Record<string, any[]> = {}
     for (const reminder of reminders) {
-      if (!reminder.reminder_days) continue
+      if (!reminder.reminder_days || !reminder.user_id) continue
+      if (!remindersByUser[reminder.user_id]) {
+        remindersByUser[reminder.user_id] = []
+      }
+      remindersByUser[reminder.user_id].push(reminder)
+    }
 
-      const thresholdDate = new Date()
-      thresholdDate.setDate(thresholdDate.getDate() - reminder.reminder_days)
+    // For each user, find their stale leads
+    const emailsByUser: Record<string, { email: string; stageMap: Record<string, any[]> }> = {}
 
-      // Find leads in this stage that haven't been updated in X days
-      const { data: staleLeads } = await supabase
-        .from('leads')
-        .select('id, business_name, owner_name, assigned_rep_id, assigned_rep:users(id, name, email)')
-        .eq('pipeline_stage', reminder.pipeline_stage)
-        .lt('updated_at', thresholdDate.toISOString())
-        .neq('pipeline_stage', 'Active Client')
+    for (const [userId, userReminders] of Object.entries(remindersByUser)) {
+      // Get user email
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('id', userId)
+        .single()
+      if (userError || !user?.email) continue
 
-      if (staleLeads && staleLeads.length > 0) {
-        for (const lead of staleLeads) {
-          const repId = lead.assigned_rep_id
-          if (!repId) continue
+      const stageMap: Record<string, any[]> = {}
 
-          if (!emailsByRep[repId]) {
-            emailsByRep[repId] = {}
-          }
+      for (const reminder of userReminders) {
+        const thresholdDate = new Date()
+        thresholdDate.setDate(thresholdDate.getDate() - reminder.reminder_days)
 
-          if (!emailsByRep[repId][reminder.pipeline_stage]) {
-            emailsByRep[repId][reminder.pipeline_stage] = []
-          }
+        // Find stale leads in this stage assigned to this user
+        const { data: staleLeads } = await supabase
+          .from('leads')
+          .select('id, business_name, owner_name')
+          .eq('pipeline_stage', reminder.pipeline_stage)
+          .eq('assigned_rep_id', userId)
+          .lt('updated_at', thresholdDate.toISOString())
+          .neq('pipeline_stage', 'Active Client')
 
-          emailsByRep[repId][reminder.pipeline_stage].push(lead)
+        if (staleLeads && staleLeads.length > 0) {
+          stageMap[reminder.pipeline_stage] = staleLeads
+        }
+      }
+
+      // Only add user if they have stale leads
+      if (Object.keys(stageMap).length > 0) {
+        emailsByUser[userId] = {
+          email: user.email,
+          stageMap,
         }
       }
     }
 
-    // Send emails to each rep
+    // Send emails to each user
     let emailsSent = 0
-    for (const [repId, stageMap] of Object.entries(emailsByRep)) {
-      // Get rep email from first lead's assigned_rep
-      let repEmail: string | null = null
-      for (const leads of Object.values(stageMap)) {
-        if (leads.length > 0 && leads[0].assigned_rep?.email) {
-          repEmail = leads[0].assigned_rep.email
-          break
-        }
-      }
-      if (!repEmail) continue
 
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SSL === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
+
+    for (const [userId, { email, stageMap }] of Object.entries(emailsByUser)) {
       // Build email body
       let emailBody = `<h2>Pipeline Reminders — ${new Date().toLocaleDateString()}</h2><p>The following leads have been in their current stage for longer than your configured reminder threshold:</p>`
 
@@ -84,29 +101,18 @@ export async function GET(req: NextRequest) {
         emailBody += `</ul>`
       }
 
-      emailBody += `<p style="font-size: 12px; color: #999; margin-top: 20px;">This is an automated reminder. Update your reminder thresholds in Settings.</p>`
-
-      // Send email
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SSL === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      })
+      emailBody += `<p style="font-size: 12px; color: #999; margin-top: 20px;">This is an automated reminder. Update your reminder thresholds in <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=pipeline-reminders">Settings</a>.</p>`
 
       try {
         await transporter.sendMail({
           from: process.env.SMTP_USER,
-          to: repEmail,
+          to: email,
           subject: `Pipeline Reminders — ${new Date().toLocaleDateString()}`,
           html: emailBody,
         })
         emailsSent++
       } catch (err) {
-        console.error(`Failed to send reminder email to ${repEmail}:`, err)
+        console.error(`Failed to send reminder email to ${email}:`, err)
       }
     }
 
