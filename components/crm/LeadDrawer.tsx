@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import {
   Phone, Mail, MapPin, Calendar, DollarSign, FileText,
   Edit3, Save, X, Building2, User, AlertTriangle, CheckCircle,
-  Clock, Tag, RefreshCw, Send, Trash2, Upload, ExternalLink,
+  Clock, Tag, RefreshCw, Send, Trash2, Upload, ExternalLink, Download,
 } from 'lucide-react'
 import { Drawer } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
