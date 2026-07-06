@@ -32,6 +32,7 @@ export function TeamMemberModal({ user, open, onClose, onSave }: TeamMemberModal
   const [email, setEmail] = useState(user.email || '')
   const [role, setRole] = useState(user.role || 'salesperson')
   const [canDeleteLeads, setCanDeleteLeads] = useState(user.can_delete_leads ?? false)
+  const [canExportLeads, setCanExportLeads] = useState(user.can_export_leads ?? false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -53,6 +54,7 @@ export function TeamMemberModal({ user, open, onClose, onSave }: TeamMemberModal
           email: email.trim(),
           role,
           canDeleteLeads,
+          canExportLeads,
         }),
       })
       const json = await res.json()
@@ -144,7 +146,8 @@ export function TeamMemberModal({ user, open, onClose, onSave }: TeamMemberModal
                 Permissions
               </span>
             </div>
-            <div className="rounded-xl p-4 bg-white/[0.03] border border-white/[0.06]">
+            <div className="rounded-xl p-4 bg-white/[0.03] border border-white/[0.06] space-y-3">
+              {/* Can Delete Leads */}
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <div className="text-sm font-medium text-white">Can Delete Leads</div>
@@ -160,6 +163,26 @@ export function TeamMemberModal({ user, open, onClose, onSave }: TeamMemberModal
                 >
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow transition-transform ${
                     canDeleteLeads ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Can Export Leads */}
+              <div className="flex items-start gap-3 pt-3 border-t border-white/[0.06]">
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-white">Can Export Leads</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    Allow this rep to export their leads as CSV or Excel files.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCanExportLeads(!canExportLeads)}
+                  className={`relative mt-0.5 w-9 h-5 rounded-full flex-shrink-0 transition-colors ${
+                    canExportLeads ? 'bg-purple-600' : 'bg-white/10'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow transition-transform ${
+                    canExportLeads ? 'translate-x-5' : 'translate-x-1'
                   }`} />
                 </button>
               </div>

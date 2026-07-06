@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { userId, name, email, role, canDeleteLeads } = await req.json()
+  const { userId, name, email, role, canDeleteLeads, canExportLeads } = await req.json()
   if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -47,6 +47,9 @@ export async function PATCH(req: NextRequest) {
   if (role !== undefined) dbUpdates.role = role
   if (role === 'salesperson' && canDeleteLeads !== undefined) {
     dbUpdates.can_delete_leads = canDeleteLeads
+  }
+  if (role === 'salesperson' && canExportLeads !== undefined) {
+    dbUpdates.can_export_leads = canExportLeads
   }
 
   const { data: updated, error: dbError } = await admin
