@@ -35,6 +35,7 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
   const [showFilters, setShowFilters] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteInProgress, setDeleteInProgress] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
@@ -84,6 +85,33 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
     URL.revokeObjectURL(url)
   }
 
+  const exportLeads = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/export/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: null }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        alert(json.error || 'Export failed')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `leads_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Pure UI updater — called after deletion is already confirmed server-side
   const removeLeadFromState = (id: string) => {
     setLeads(prev => prev.filter(l => l.id !== id))
@@ -118,6 +146,9 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={downloadTemplate}>
               Template
+            </Button>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={exportLeads} loading={exporting}>
+              Export
             </Button>
             <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => setShowImportModal(true)}>
               Import

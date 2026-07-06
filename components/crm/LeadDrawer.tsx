@@ -47,6 +47,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [businessMode, setBusinessMode] = useState<'select' | 'create'>('select')
   const [newOwner, setNewOwner] = useState({ name: '', phone: '', email: '' })
   const [newBusiness, setNewBusiness] = useState({ name: '', address: '', city: '', state: '', zip: '', industry: '' })
+  const [exporting, setExporting] = useState(false)
 
   // Commission rate
   const [commissionRate, setCommissionRate] = useState<number | null>(null)
@@ -112,6 +113,33 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   }
 
   const set = (k: keyof Lead, v: any) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/export/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        alert(json.error || 'Export failed')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${lead.business_name || 'lead'}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -247,7 +275,10 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
               <Button variant="primary" size="sm" icon={<Save size={14} />} loading={saving} onClick={handleSave}>Save</Button>
             </>
           ) : (
-            <Button variant="secondary" size="sm" icon={<Edit3 size={14} />} onClick={() => setEditing(true)}>Edit</Button>
+            <>
+              <Button variant="secondary" size="sm" icon={<Download size={14} />} loading={exporting} onClick={handleExport}>Export</Button>
+              <Button variant="secondary" size="sm" icon={<Edit3 size={14} />} onClick={() => setEditing(true)}>Edit</Button>
+            </>
           )}
         </div>
       </div>
