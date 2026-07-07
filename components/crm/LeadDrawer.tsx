@@ -226,7 +226,8 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       // Execute pipeline stage triggers if stage changed
       if (payload.pipeline_stage && payload.pipeline_stage !== lead.pipeline_stage) {
         try {
-          await fetch('/api/leads/execute-triggers', {
+          console.log(`[LeadDrawer] Executing triggers for stage change: ${lead.pipeline_stage} -> ${payload.pipeline_stage}`)
+          const triggerRes = await fetch('/api/leads/execute-triggers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -234,6 +235,11 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
               newStageName: payload.pipeline_stage,
             }),
           })
+          const triggerData = await triggerRes.json()
+          console.log('[LeadDrawer] Trigger execution response:', triggerData)
+          if (!triggerRes.ok) {
+            console.error('[LeadDrawer] Trigger execution failed:', triggerData.error)
+          }
         } catch (err) {
           console.error('[LeadDrawer] Failed to execute triggers:', err)
         }

@@ -8,10 +8,12 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
+      console.log('[Triggers] Unauthorized')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { leadId, newStageName } = await req.json()
+    console.log(`[Triggers] Executing for lead ${leadId}, stage ${newStageName}`)
 
     if (!leadId || !newStageName) {
       return NextResponse.json({ error: 'leadId and newStageName are required' }, { status: 400 })
@@ -20,13 +22,16 @@ export async function POST(req: NextRequest) {
     // Fetch lead details
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, business_name, owner_name, assigned_rep_id')
+      .select('id, business_name, owner_name, owner_id, assigned_rep_id')
       .eq('id', leadId)
       .single()
 
     if (leadError || !lead) {
+      console.log(`[Triggers] Lead not found: ${leadError?.message}`)
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
+
+    console.log(`[Triggers] Found lead:`, lead)
 
     // Fetch all enabled triggers for this stage
     const { data: triggers, error: triggersError } = await supabase
@@ -35,9 +40,17 @@ export async function POST(req: NextRequest) {
       .eq('stage_name', newStageName)
       .eq('enabled', true)
 
-    if (triggersError || !triggers || triggers.length === 0) {
-      return NextResponse.json({ success: true, message: 'No triggers to execute' })
+    if (triggersError) {
+      console.error(`[Triggers] Failed to fetch triggers: ${triggersError.message}`)
+      return NextResponse.json({ error: `Trigger fetch error: ${triggersError.message}` }, { status: 500 })
     }
+
+    if (!triggers || triggers.length === 0) {
+      console.log(`[Triggers] No triggers for stage: ${newStageName}`)
+      return NextResponse.json({ success: true, message: 'No triggers to execute', triggersFound: 0 })
+    }
+
+    console.log(`[Triggers] Found ${triggers.length} triggers`)
 
     // Get user's SMTP config (owner/VP)
     const { data: ownerUser, error: ownerError } = await supabase
@@ -46,12 +59,23 @@ export async function POST(req: NextRequest) {
       .eq('role', 'owner')
       .single()
 
-    if (ownerError || !ownerUser?.smtp_host) {
+    if (ownerError) {
+      console.error(`[Triggers] Failed to fetch owner: ${ownerError.message}`)
+      return NextResponse.json(
+        { error: `Owner fetch error: ${ownerError.message}` },
+        { status: 500 }
+      )
+    }
+
+    if (!ownerUser?.smtp_host || !ownerUser?.smtp_user || !ownerUser?.smtp_pass) {
+      console.error(`[Triggers] SMTP not properly configured. Host: ${ownerUser?.smtp_host}, User: ${ownerUser?.smtp_user}`)
       return NextResponse.json(
         { error: 'SMTP not configured for owner account' },
         { status: 500 }
       )
     }
+
+    console.log(`[Triggers] SMTP configured for: ${ownerUser.smtp_user}`)
 
     const transporter = nodemailer.createTransport({
       host: ownerUser.smtp_host,
@@ -64,36 +88,77 @@ export async function POST(req: NextRequest) {
     })
 
     let emailsSent = 0
+    const executionLog: any[] = []
 
     for (const trigger of triggers) {
+      console.log(`[Triggers] Processing trigger ${trigger.id}, type: ${trigger.recipient_type}`)
+
       let recipientEmail: string | null = null
       let recipientName: string | null = null
 
       if (trigger.recipient_type === 'assigned_rep' && lead.assigned_rep_id) {
-        const { data: rep } = await supabase
+        const { data: rep, error: repError } = await supabase
           .from('users')
           .select('email, name')
           .eq('id', lead.assigned_rep_id)
           .single()
+
+        if (repError) {
+          console.error(`[Triggers] Failed to fetch rep: ${repError.message}`)
+          executionLog.push({ trigger: trigger.id, error: `Rep fetch failed: ${repError.message}` })
+          continue
+        }
+
         if (rep) {
           recipientEmail = rep.email
           recipientName = rep.name
+          console.log(`[Triggers] Rep recipient: ${recipientEmail}`)
         }
       } else if (trigger.recipient_type === 'lead_owner') {
         // Get the person (owner) associated with the lead
-        const { data: leadWithOwner } = await supabase
+        const { data: leadWithOwner, error: ownerFetchError } = await supabase
           .from('leads')
-          .select('owner_id, people(email, name)')
+          .select('owner_id')
           .eq('id', leadId)
           .single()
 
-        if (leadWithOwner?.people && Array.isArray(leadWithOwner.people) && leadWithOwner.people[0]) {
-          recipientEmail = leadWithOwner.people[0].email
-          recipientName = leadWithOwner.people[0].name
+        if (ownerFetchError) {
+          console.error(`[Triggers] Failed to fetch lead owner_id: ${ownerFetchError.message}`)
+          executionLog.push({ trigger: trigger.id, error: `Lead owner fetch failed` })
+          continue
+        }
+
+        if (leadWithOwner?.owner_id) {
+          const { data: person, error: personError } = await supabase
+            .from('people')
+            .select('email, name')
+            .eq('id', leadWithOwner.owner_id)
+            .single()
+
+          if (personError) {
+            console.error(`[Triggers] Failed to fetch person: ${personError.message}`)
+            executionLog.push({ trigger: trigger.id, error: `Person fetch failed` })
+            continue
+          }
+
+          if (person?.email) {
+            recipientEmail = person.email
+            recipientName = person.name
+            console.log(`[Triggers] Person recipient: ${recipientEmail}`)
+          } else {
+            console.warn(`[Triggers] Person found but no email: ${person?.name}`)
+            executionLog.push({ trigger: trigger.id, error: `Person has no email` })
+          }
+        } else {
+          console.warn(`[Triggers] Lead has no owner_id`)
+          executionLog.push({ trigger: trigger.id, error: `Lead has no owner` })
         }
       }
 
-      if (!recipientEmail) continue
+      if (!recipientEmail) {
+        console.warn(`[Triggers] No recipient email found for trigger ${trigger.id}`)
+        continue
+      }
 
       // Get assigned rep name for variable substitution
       let repName = 'Team'
@@ -113,25 +178,32 @@ export async function POST(req: NextRequest) {
         .replace(/{REP_NAME}/g, repName)
 
       try {
-        await transporter.sendMail({
+        console.log(`[Triggers] Sending email to ${recipientEmail} with subject: ${trigger.email_subject}`)
+        const info = await transporter.sendMail({
           from: ownerUser.smtp_user,
           to: recipientEmail,
           subject: trigger.email_subject,
           text: emailBody,
         })
+        console.log(`[Triggers] Email sent successfully. Message ID: ${info.messageId}`)
         emailsSent++
+        executionLog.push({ trigger: trigger.id, status: 'sent', messageId: info.messageId, to: recipientEmail })
       } catch (emailError) {
-        console.error(`Failed to send trigger email: ${emailError}`)
+        console.error(`[Triggers] Failed to send trigger email: ${emailError}`)
+        executionLog.push({ trigger: trigger.id, status: 'failed', error: String(emailError) })
       }
     }
 
+    console.log(`[Triggers] Completed. Emails sent: ${emailsSent}`)
     return NextResponse.json({
       success: true,
       message: `Executed ${emailsSent} trigger emails`,
       emailsSent,
+      triggersProcessed: triggers.length,
+      executionLog,
     })
   } catch (err) {
     console.error('Trigger execution error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: String(err), stack: err instanceof Error ? err.stack : '' }, { status: 500 })
   }
 }
