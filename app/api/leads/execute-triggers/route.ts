@@ -52,25 +52,27 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Triggers] Found ${triggers.length} triggers`)
 
-    // Get user's SMTP config (owner/VP)
-    const { data: ownerUser, error: ownerError } = await supabase
+    // Get SMTP config from any admin account (owner or vp_operations)
+    const { data: adminUsers, error: adminError } = await supabase
       .from('users')
-      .select('smtp_host, smtp_port, smtp_user, smtp_pass, name')
-      .eq('role', 'owner')
-      .single()
+      .select('id, smtp_host, smtp_port, smtp_user, smtp_pass, name, role')
+      .in('role', ['owner', 'vp_operations'])
 
-    if (ownerError) {
-      console.error(`[Triggers] Failed to fetch owner: ${ownerError.message}`)
+    if (adminError) {
+      console.error(`[Triggers] Failed to fetch admins: ${adminError.message}`)
       return NextResponse.json(
-        { error: `Owner fetch error: ${ownerError.message}` },
+        { error: `Admin fetch error: ${adminError.message}` },
         { status: 500 }
       )
     }
 
-    if (!ownerUser?.smtp_host || !ownerUser?.smtp_user || !ownerUser?.smtp_pass) {
-      console.error(`[Triggers] SMTP not properly configured. Host: ${ownerUser?.smtp_host}, User: ${ownerUser?.smtp_user}`)
+    // Find first admin with SMTP configured
+    const ownerUser = adminUsers?.find(u => u.smtp_host && u.smtp_user && u.smtp_pass)
+
+    if (!ownerUser) {
+      console.error(`[Triggers] No admin account with SMTP configured`)
       return NextResponse.json(
-        { error: 'SMTP not configured for owner account' },
+        { error: 'SMTP not configured for any admin account' },
         { status: 500 }
       )
     }
