@@ -31,7 +31,7 @@ export function KanbanCard({ lead, onClick, isDragging }: KanbanCardProps) {
   }
 
   // Use related data if direct fields are empty
-  const businessName = lead.business_name || (lead.businesses && Array.isArray(lead.businesses) && lead.businesses[0]?.business_name) || ''
+  const businessName = lead.business_name || (lead.businesses && Array.isArray(lead.businesses) && lead.businesses[0]?.business_name) || 'Untitled Lead'
   const ownerName = lead.owner_name || (lead.people && Array.isArray(lead.people) && lead.people[0]?.name) || ''
 
   const followUpOverdue = lead.next_follow_up && isOverdue(lead.next_follow_up)
