@@ -30,6 +30,10 @@ export function KanbanCard({ lead, onClick, isDragging }: KanbanCardProps) {
     opacity: isSortableDragging ? 0.4 : 1,
   }
 
+  // Use related data if direct fields are empty
+  const businessName = lead.business_name || (lead.businesses && Array.isArray(lead.businesses) && lead.businesses[0]?.business_name) || ''
+  const ownerName = lead.owner_name || (lead.people && Array.isArray(lead.people) && lead.people[0]?.name) || ''
+
   const followUpOverdue = lead.next_follow_up && isOverdue(lead.next_follow_up)
 
   return (
@@ -49,8 +53,8 @@ export function KanbanCard({ lead, onClick, isDragging }: KanbanCardProps) {
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-white truncate">{lead.business_name}</div>
-          <div className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>{lead.owner_name}</div>
+          <div className="text-xs font-semibold text-white truncate">{businessName}</div>
+          <div className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>{ownerName}</div>
         </div>
         {lead.assigned_rep && (
           <Avatar name={(lead.assigned_rep as any).name} size="xs" className="flex-shrink-0" />

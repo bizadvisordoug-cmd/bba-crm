@@ -18,7 +18,7 @@ export default async function KanbanPage() {
 
   const query = supabase
     .from('leads')
-    .select('*, assigned_rep:users(id, name, email)')
+    .select('*, assigned_rep:users(id, name, email), people(name, email), businesses(business_name)')
     .order('updated_at', { ascending: false })
 
   if (!isAdmin) query.eq('assigned_rep_id', user!.id)
