@@ -88,6 +88,20 @@ export function KanbanClient({ leads: initialLeads, reps, currentUserId, isAdmin
       action: 'moved lead',
       details: `${lead.business_name}: ${lead.pipeline_stage} → ${newStage}`,
     })
+
+    // Execute pipeline stage triggers
+    try {
+      await fetch('/api/leads/execute-triggers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: leadId,
+          newStageName: newStage,
+        }),
+      })
+    } catch (err) {
+      console.error('[Kanban] Failed to execute triggers:', err)
+    }
   }
 
   const handleLeadUpdate = (updated: Lead) => {

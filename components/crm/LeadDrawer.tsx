@@ -145,8 +145,6 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   }
 
   const handleSave = async () => {
-    alert(`DEBUG: Save called. Stage: ${form.pipeline_stage} (was ${lead.pipeline_stage})`)
-    console.log('[LeadDrawer] handleSave called, current stage:', form.pipeline_stage, 'lead stage:', lead.pipeline_stage)
     setSaving(true)
     setSaveError('')
     try {
@@ -225,12 +223,10 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       }
       onUpdate(data)
 
-      // Execute pipeline stage triggers if stage changed
-      console.log(`[LeadDrawer] Checking triggers: payload.stage=${payload.pipeline_stage}, lead.stage=${lead.pipeline_stage}`)
+      // Execute pipeline stage triggers if stage changed (from drawer form)
       if (payload.pipeline_stage && payload.pipeline_stage !== lead.pipeline_stage) {
         try {
-          console.log(`[LeadDrawer] Executing triggers for stage change: ${lead.pipeline_stage} -> ${payload.pipeline_stage}`)
-          const triggerRes = await fetch('/api/leads/execute-triggers', {
+          await fetch('/api/leads/execute-triggers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -238,11 +234,6 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
               newStageName: payload.pipeline_stage,
             }),
           })
-          const triggerData = await triggerRes.json()
-          console.log('[LeadDrawer] Trigger execution response:', triggerData)
-          if (!triggerRes.ok) {
-            console.error('[LeadDrawer] Trigger execution failed:', triggerData.error)
-          }
         } catch (err) {
           console.error('[LeadDrawer] Failed to execute triggers:', err)
         }
