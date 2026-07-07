@@ -308,24 +308,30 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, onView
 
       {/* ── Contact Info ── */}
       <section className="mb-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Contact</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Owner Contact</h3>
         {editing ? (
           <div className="space-y-3">
-            <Input label="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+1 (555) 123-4567" />
-            <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="name@example.com" />
+            <Input label="Owner Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+1 (555) 123-4567" />
+            <Input label="Owner Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="name@example.com" />
           </div>
         ) : (
           <div className="space-y-2">
             {person.phone && (
               <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-sm hover:text-purple-400 transition-colors">
                 <Phone size={13} className="text-[var(--text-muted)]" />
-                <span style={{ color: 'var(--text-secondary)' }}>{person.phone}</span>
+                <div className="flex-1">
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Owner Phone</div>
+                  <span style={{ color: 'var(--text-secondary)' }}>{person.phone}</span>
+                </div>
               </a>
             )}
             {person.email && (
               <a href={`mailto:${person.email}`} className="flex items-center gap-2 text-sm hover:text-purple-400 transition-colors">
                 <Mail size={13} className="text-[var(--text-muted)]" />
-                <span style={{ color: 'var(--text-secondary)' }}>{person.email}</span>
+                <div className="flex-1">
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Owner Email</div>
+                  <span style={{ color: 'var(--text-secondary)' }}>{person.email}</span>
+                </div>
               </a>
             )}
             {!person.phone && !person.email && (
