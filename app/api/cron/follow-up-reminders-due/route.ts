@@ -14,8 +14,16 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
 
-    // Get today's date (in UTC - adjust if needed for CT timezone)
-    const today = new Date().toISOString().split('T')[0]
+    // Get today's date in Central Time (CT/CDT)
+    const ctFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const ctDate = ctFormatter.format(new Date())
+    const [month, day, year] = ctDate.split('/')
+    const today = `${year}-${month}-${day}`
 
     // Find all leads with next_follow_up = today, grouped by assigned rep
     const { data: dueTodayLeads, error: leadsError } = await supabase
