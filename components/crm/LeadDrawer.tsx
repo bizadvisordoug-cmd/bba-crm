@@ -145,6 +145,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   }
 
   const handleSave = async () => {
+    alert(`DEBUG: Save called. Stage: ${form.pipeline_stage} (was ${lead.pipeline_stage})`)
     console.log('[LeadDrawer] handleSave called, current stage:', form.pipeline_stage, 'lead stage:', lead.pipeline_stage)
     setSaving(true)
     setSaveError('')
