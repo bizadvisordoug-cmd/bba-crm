@@ -73,9 +73,14 @@ export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
               <KanbanCard lead={lead} onClick={() => onCardClick(lead)} />
             </motion.div>
           ))}
+          {leads.length === 0 && (
+            <div className="flex items-center justify-center h-24 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Drop here
+            </div>
+          )}
         </SortableContext>
-        {leads.length === 0 && (
-          <div className="flex items-center justify-center h-24 text-xs" style={{ color: 'var(--text-muted)' }}>
+        {leads.length > 0 && (
+          <div className="flex items-center justify-center py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
             Drop here
           </div>
         )}
