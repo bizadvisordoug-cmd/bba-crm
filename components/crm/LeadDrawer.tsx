@@ -48,6 +48,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [newOwner, setNewOwner] = useState({ name: '', phone: '', email: '' })
   const [newBusiness, setNewBusiness] = useState({ name: '', address: '', city: '', state: '', zip: '', industry: '' })
   const [exporting, setExporting] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   // Commission rate
   const [commissionRate, setCommissionRate] = useState<number | null>(null)
@@ -114,13 +115,14 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
 
   const set = (k: keyof Lead, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'csv' | 'excel') => {
     setExporting(true)
+    setShowExportMenu(false)
     try {
       const res = await fetch('/api/export/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: lead.id }),
+        body: JSON.stringify({ format, leadId: lead.id }),
       })
       if (!res.ok) {
         const json = await res.json()
@@ -131,7 +133,8 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${lead.business_name || 'lead'}.csv`
+      const ext = format === 'excel' ? 'xlsx' : 'csv'
+      a.download = `${lead.business_name || 'lead'}.${ext}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -276,7 +279,35 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
             </>
           ) : (
             <>
-              <Button variant="secondary" size="sm" icon={<Download size={14} />} loading={exporting} onClick={handleExport}>Export</Button>
+              <div className="relative">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Download size={14} />}
+                  loading={exporting}
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                >
+                  Export
+                </Button>
+                {showExportMenu && (
+                  <div className="absolute top-full mt-1 right-0 bg-[#1a1f2e] border border-white/[0.15] rounded-lg shadow-lg z-10">
+                    <button
+                      onClick={() => handleExport('csv')}
+                      className="block w-full text-left px-4 py-2 text-sm hover:bg-white/[0.08] first:rounded-t-lg"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Export as CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport('excel')}
+                      className="block w-full text-left px-4 py-2 text-sm hover:bg-white/[0.08] last:rounded-b-lg"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      Export as Excel
+                    </button>
+                  </div>
+                )}
+              </div>
               <Button variant="secondary" size="sm" icon={<Edit3 size={14} />} onClick={() => setEditing(true)}>Edit</Button>
             </>
           )}

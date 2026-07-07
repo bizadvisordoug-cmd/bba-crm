@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import * as XLSX from 'xlsx'
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +23,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Export permission denied' }, { status: 403 })
     }
 
-    const { leadId } = await req.json()
+    const { format, leadId } = await req.json()
+
+    if (!['csv', 'excel'].includes(format)) {
+      return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
+    }
 
     // Fetch leads
     let query = supabase
@@ -44,7 +49,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No leads to export' }, { status: 404 })
     }
 
-    return exportAsCSV(leads, leadId ? `lead-${leadId}` : 'leads')
+    const filename = leadId ? `lead-${leadId}` : 'leads'
+    if (format === 'csv') {
+      return exportAsCSV(leads, filename)
+    } else {
+      return exportAsExcel(leads, filename)
+    }
   } catch (err) {
     console.error('Export error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
@@ -71,6 +81,42 @@ function exportAsCSV(leads: any[], filename: string) {
     headers: {
       'Content-Type': 'text/csv;charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}.csv"`,
+    },
+  })
+}
+
+function exportAsExcel(leads: any[], filename: string) {
+  const headers = ['Business Name', 'Owner Name', 'Owner Phone', 'Business Phone', 'Email', 'Pipeline Stage']
+  const rows = leads.map(lead => [
+    lead.business_name || '',
+    lead.owner_name || '',
+    lead.owner_phone || '',
+    lead.business_phone || '',
+    lead.email || '',
+    lead.pipeline_stage || '',
+  ])
+
+  const worksheetData = [headers, ...rows]
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads')
+
+  // Style header row
+  worksheet['!cols'] = [
+    { wch: 30 }, // Business Name
+    { wch: 20 }, // Owner Name
+    { wch: 15 }, // Owner Phone
+    { wch: 15 }, // Business Phone
+    { wch: 30 }, // Email
+    { wch: 18 }, // Pipeline Stage
+  ]
+
+  const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+
+  return new NextResponse(buffer, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}.xlsx"`,
     },
   })
 }

@@ -36,6 +36,7 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteInProgress, setDeleteInProgress] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
@@ -85,13 +86,14 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
     URL.revokeObjectURL(url)
   }
 
-  const exportLeads = async () => {
+  const exportLeads = async (format: 'csv' | 'excel') => {
     setExporting(true)
+    setShowExportMenu(false)
     try {
       const res = await fetch('/api/export/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: null }),
+        body: JSON.stringify({ format, leadId: null }),
       })
       if (!res.ok) {
         const json = await res.json()
@@ -102,7 +104,8 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `leads_${new Date().toISOString().split('T')[0]}.csv`
+      const ext = format === 'excel' ? 'xlsx' : 'csv'
+      a.download = `leads_${new Date().toISOString().split('T')[0]}.${ext}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -147,9 +150,35 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
             <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={downloadTemplate}>
               Template
             </Button>
-            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={exportLeads} loading={exporting}>
-              Export
-            </Button>
+            <div className="relative">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Download size={14} />}
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                loading={exporting}
+              >
+                Export
+              </Button>
+              {showExportMenu && (
+                <div className="absolute top-full mt-1 right-0 bg-[#1a1f2e] border border-white/[0.15] rounded-lg shadow-lg z-10">
+                  <button
+                    onClick={() => exportLeads('csv')}
+                    className="block w-full text-left px-4 py-2 text-sm hover:bg-white/[0.08] first:rounded-t-lg"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={() => exportLeads('excel')}
+                    className="block w-full text-left px-4 py-2 text-sm hover:bg-white/[0.08] last:rounded-b-lg"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Export as Excel
+                  </button>
+                </div>
+              )}
+            </div>
             <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => setShowImportModal(true)}>
               Import
             </Button>
