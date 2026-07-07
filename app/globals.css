@@ -148,6 +148,7 @@ select option {
 .kanban-column {
   flex-shrink: 0;
   width: 280px;
+  pointer-events: auto;
 }
 
 /* Badge colors */
