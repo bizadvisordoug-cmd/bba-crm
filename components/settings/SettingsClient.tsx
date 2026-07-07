@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   User, Mail, Phone, Users, Eye, EyeOff, Save, Check,
   MapPin, UserPlus, ChevronRight, Upload, Wifi, CheckCircle, AlertCircle,
-  DollarSign, Clock, Workflow,
+  DollarSign, Clock, Workflow, Zap,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -21,6 +21,7 @@ import { InviteTeamModal } from './InviteTeamModal'
 import { CommissionsSettingsPanel } from './CommissionsSettingsPanel'
 import { PipelineRemindersPanel } from './PipelineRemindersPanel'
 import { PipelineStagesPanel } from './PipelineStagesPanel'
+import { PipelineTriggersPanel } from './PipelineTriggersPanel'
 
 interface SettingsClientProps {
   profile: any
@@ -32,7 +33,7 @@ type TestResult = { ok: boolean; message: string }
 
 export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: SettingsClientProps) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages' | 'pipeline-triggers'>('profile')
   const [profile, setProfile] = useState(initialProfile)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -217,6 +218,7 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
     { key: 'integrations', label: 'Integrations',  icon: Phone  },
     { key: 'map',          label: 'Map',            icon: MapPin },
     ...(isAdmin ? [{ key: 'pipeline-stages', label: 'Pipeline Stages', icon: Workflow }] : []),
+    ...(isAdmin ? [{ key: 'pipeline-triggers', label: 'Pipeline Triggers', icon: Zap }] : []),
     ...(isAdmin ? [{ key: 'pipeline-reminders', label: 'Pipeline Reminders', icon: Clock }] : []),
     ...(isAdmin ? [{ key: 'team', label: 'Team', icon: Users }] : []),
     ...(isAdmin ? [{ key: 'commissions', label: 'Commissions', icon: DollarSign }] : []),
@@ -672,6 +674,14 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
             <GlassCard>
               <h2 className="font-semibold text-white mb-5">Pipeline Stages</h2>
               <PipelineStagesPanel />
+            </GlassCard>
+          )}
+
+          {/* Pipeline Triggers (admin only) */}
+          {activeTab === 'pipeline-triggers' && isAdmin && (
+            <GlassCard>
+              <h2 className="font-semibold text-white mb-5">Pipeline Triggers & Automation</h2>
+              <PipelineTriggersPanel />
             </GlassCard>
           )}
 

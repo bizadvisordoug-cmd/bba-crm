@@ -223,6 +223,22 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       }
       onUpdate(data)
 
+      // Execute pipeline stage triggers if stage changed
+      if (payload.pipeline_stage && payload.pipeline_stage !== lead.pipeline_stage) {
+        try {
+          await fetch('/api/leads/execute-triggers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: lead.id,
+              newStageName: payload.pipeline_stage,
+            }),
+          })
+        } catch (err) {
+          console.error('[LeadDrawer] Failed to execute triggers:', err)
+        }
+      }
+
       // Save commission rate if entered
       if (commissionPct.trim()) {
         const val = parseFloat(commissionPct)
