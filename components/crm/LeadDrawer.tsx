@@ -224,6 +224,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       onUpdate(data)
 
       // Execute pipeline stage triggers if stage changed
+      console.log(`[LeadDrawer] Checking triggers: payload.stage=${payload.pipeline_stage}, lead.stage=${lead.pipeline_stage}`)
       if (payload.pipeline_stage && payload.pipeline_stage !== lead.pipeline_stage) {
         try {
           console.log(`[LeadDrawer] Executing triggers for stage change: ${lead.pipeline_stage} -> ${payload.pipeline_stage}`)
