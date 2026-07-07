@@ -26,7 +26,6 @@ const STAGE_HEADER_COLORS: Record<PipelineStage, string> = {
 
 export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
-  console.log(`[KanbanColumn] Registered drop zone: ${stage}`)
 
   return (
     <div className="kanban-column">

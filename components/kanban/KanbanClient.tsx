@@ -10,7 +10,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
 } from '@dnd-kit/core'
 import { Plus, Filter } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -148,7 +148,7 @@ export function KanbanClient({ leads: initialLeads, reps, currentUserId, isAdmin
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
