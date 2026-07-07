@@ -19,10 +19,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'leadId and newStageName are required' }, { status: 400 })
     }
 
-    // Fetch lead details
+    // Fetch lead details with related people and businesses
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, business_name, owner_name, owner_id, assigned_rep_id')
+      .select('id, business_name, owner_name, owner_id, business_id, assigned_rep_id, people(name, email), businesses(business_name)')
       .eq('id', leadId)
       .single()
 
@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
 
-    console.log(`[Triggers] Found lead:`, lead)
+    // Get actual business/owner names from related tables if not in lead directly
+    const leadName = lead.business_name || (lead.businesses && Array.isArray(lead.businesses) && lead.businesses[0]?.business_name) || 'Lead'
+    const ownerName = lead.owner_name || (lead.people && Array.isArray(lead.people) && lead.people[0]?.name) || 'Contact'
+
+    console.log(`[Triggers] Found lead: ${leadName} (owner: ${ownerName})`)
 
     // Fetch all enabled triggers for this stage
     const { data: triggers, error: triggersError } = await supabase
@@ -175,8 +179,8 @@ export async function POST(req: NextRequest) {
 
       // Replace variables in email body
       const emailBody = trigger.email_body
-        .replace(/{LEAD_NAME}/g, lead.business_name || lead.owner_name || 'Lead')
-        .replace(/{OWNER_NAME}/g, lead.owner_name || 'Contact')
+        .replace(/{LEAD_NAME}/g, leadName)
+        .replace(/{OWNER_NAME}/g, ownerName)
         .replace(/{REP_NAME}/g, repName)
 
       try {
