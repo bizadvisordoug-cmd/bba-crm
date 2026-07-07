@@ -10,14 +10,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has export permission
+    // Check if user has export permission (admins can always export)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('can_export_leads')
+      .select('can_export_leads, role')
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData?.can_export_leads) {
+    const isAdmin = userData?.role === 'owner' || userData?.role === 'vp_operations'
+    if (userError || (!isAdmin && !userData?.can_export_leads)) {
       return NextResponse.json({ error: 'Export permission denied' }, { status: 403 })
     }
 
