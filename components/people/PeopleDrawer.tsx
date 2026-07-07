@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Phone, Mail, Edit3, Save, X, Building2, Trash2, Plus, ExternalLink,
+  Phone, Mail, Edit3, Save, X, Building2, Trash2, Plus, ExternalLink, DollarSign, Zap,
 } from 'lucide-react'
 import { Drawer } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -169,6 +169,18 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, onView
         .select()
         .single()
       if (error) throw error
+
+      // Sync business contact info to all related leads
+      if (bizForm.business_phone || bizForm.business_email) {
+        await supabase
+          .from('leads')
+          .update({
+            business_phone: bizForm.business_phone || null,
+            email: bizForm.business_email || null,
+          })
+          .eq('business_id', bizId)
+      }
+
       const updated = businesses.map(b => b.id === bizId ? data : b)
       setBusinesses(updated)
       onUpdate({ ...person, name: form.name, phone: form.phone || null, email: form.email || null, businesses: updated } as PersonWithBusinesses)
@@ -593,21 +605,49 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, onView
           <p className="text-xs py-2 text-center" style={{ color: 'var(--text-muted)' }}>No leads yet.</p>
         ) : (
           <div className="space-y-2">
-            {leads.map(lead => (
-              <button
-                key={lead.id}
-                onClick={() => onViewLead?.(lead)}
-                className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-purple-500/30 transition-all group"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{lead.business_name || lead.owner_name || 'Untitled'}</p>
-                  <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                    {lead.pipeline_stage}
-                  </p>
-                </div>
-                <ExternalLink size={13} className="text-[var(--text-muted)] group-hover:text-purple-400 flex-shrink-0 transition-colors" />
-              </button>
-            ))}
+            {leads.map(lead => {
+              const stageColors: Record<string, string> = {
+                'New Lead': '#6b7280',
+                'Contacted': '#3b82f6',
+                'Appointment Set': '#8b5cf6',
+                'Contract Sent': '#f59e0b',
+                'Signed': '#06b6d4',
+                'Equipment Ordered': '#a855f7',
+                'Install Scheduled': '#60a5fa',
+                'Active Client': '#10b981',
+              }
+              return (
+                <button
+                  key={lead.id}
+                  onClick={() => onViewLead?.(lead)}
+                  className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-purple-500/30 transition-all group"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: stageColors[lead.pipeline_stage as string] || '#6b7280' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{lead.business_name || lead.owner_name || 'Untitled'}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                        {lead.pipeline_stage}
+                      </p>
+                      {lead.current_processor && (
+                        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                          • {lead.current_processor}
+                        </p>
+                      )}
+                      {lead.monthly_processing_volume ? (
+                        <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                          • ${(lead.monthly_processing_volume / 1000).toFixed(0)}k/mo
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <ExternalLink size={13} className="text-[var(--text-muted)] group-hover:text-purple-400 flex-shrink-0 transition-colors" />
+                </button>
+              )
+            })}
           </div>
         )}
       </section>

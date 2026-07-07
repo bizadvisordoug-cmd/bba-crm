@@ -221,6 +221,18 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
         setSaveError(`DB error ${error.code}: ${msg}`)
         return
       }
+
+      // Sync business phone/email back to business record
+      if (payload.business_id && (payload.business_phone || payload.email)) {
+        await supabase
+          .from('businesses')
+          .update({
+            business_phone: payload.business_phone || null,
+            business_email: payload.email || null,
+          })
+          .eq('id', payload.business_id)
+      }
+
       onUpdate(data)
 
       // Execute pipeline stage triggers if stage changed (from drawer form)
