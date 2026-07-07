@@ -67,11 +67,19 @@ export function KanbanClient({ leads: initialLeads, reps, currentUserId, isAdmin
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     setActiveId(null)
-    if (!over) return
+    if (!over) {
+      console.log('[Kanban] No drop target')
+      return
+    }
     const leadId = active.id as string
     const newStage = over.id as PipelineStage
 
-    if (!PIPELINE_STAGES.includes(newStage)) return
+    console.log(`[Kanban] Drop detected: ${leadId} → ${newStage}`)
+    console.log(`[Kanban] Is valid stage? ${PIPELINE_STAGES.includes(newStage)}`)
+    if (!PIPELINE_STAGES.includes(newStage)) {
+      console.log(`[Kanban] Invalid stage: ${newStage}`)
+      return
+    }
     const lead = leads.find(l => l.id === leadId)
     if (!lead || lead.pipeline_stage === newStage) return
 
