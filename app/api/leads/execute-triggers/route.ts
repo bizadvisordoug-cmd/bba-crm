@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     // Fetch lead details with related people and businesses
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, business_name, owner_name, owner_id, business_id, assigned_rep_id, people(name, email), businesses(business_name)')
+      .select('id, business_name, owner_name, owner_id, business_id, assigned_rep_id, owner:people(name, email), business:businesses(business_name)')
       .eq('id', leadId)
       .single()
 
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Get actual business/owner names from related tables if not in lead directly
-    const leadName = lead.business_name || (lead.businesses && Array.isArray(lead.businesses) && lead.businesses[0]?.business_name) || 'Lead'
-    const ownerName = lead.owner_name || (lead.people && Array.isArray(lead.people) && lead.people[0]?.name) || 'Contact'
+    const leadName = lead.business_name || (lead.business && typeof lead.business === 'object' && (lead.business as any).business_name) || 'Lead'
+    const ownerName = lead.owner_name || (lead.owner && typeof lead.owner === 'object' && (lead.owner as any).name) || 'Contact'
 
     console.log(`[Triggers] Found lead: ${leadName} (owner: ${ownerName})`)
 
