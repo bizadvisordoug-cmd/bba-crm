@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Phone, Mail, Edit3, Save, X, Building2, Trash2, Plus,
+  Phone, Mail, Edit3, Save, X, Building2, Trash2, Plus, ExternalLink,
 } from 'lucide-react'
 import { Drawer } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Avatar } from '@/components/ui/Avatar'
 import { createClient } from '@/lib/supabase'
-import type { Person } from '@/types'
+import type { Person, Lead } from '@/types'
 
 export type FullBusiness = {
   id: string
@@ -19,6 +19,8 @@ export type FullBusiness = {
   city?: string | null
   state?: string | null
   zip?: string | null
+  business_phone?: string | null
+  business_email?: string | null
   commission_percentage?: number | null
 }
 
@@ -34,12 +36,13 @@ interface PeopleDrawerProps {
   onClose: () => void
   onUpdate: (person: PersonWithBusinesses) => void
   onDelete?: (id: string) => void
+  onViewLead?: (lead: Lead) => void
   isAdmin: boolean
 }
 
-const EMPTY_BIZ_FORM = { name: '', industry: '', address: '', city: '', state: '', zip: '', commission_percentage: '' }
+const EMPTY_BIZ_FORM = { name: '', industry: '', address: '', city: '', state: '', zip: '', business_phone: '', business_email: '', commission_percentage: '' }
 
-export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmin }: PeopleDrawerProps) {
+export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, onViewLead, isAdmin }: PeopleDrawerProps) {
   const supabase = createClient()
 
   // Person edit state
@@ -65,6 +68,10 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
   const [deletingPerson, setDeletingPerson] = useState(false)
   const [deletePersonError, setDeletePersonError] = useState('')
 
+  // Associated leads
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loadingLeads, setLoadingLeads] = useState(false)
+
   // Sync state when a different person is selected
   useEffect(() => {
     setEditing(false)
@@ -79,7 +86,23 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
     setConfirmDeleteBizId(null)
     setConfirmDeletePerson(false)
     setDeletePersonError('')
-  }, [person.id])
+
+    // Fetch associated leads
+    setLoadingLeads(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('owner_id', person.id)
+        if (!error && data) {
+          setLeads(data as Lead[])
+        }
+      } finally {
+        setLoadingLeads(false)
+      }
+    })()
+  }, [person.id, supabase])
 
   // ── Person edit ─────────────────────────────────────────────────────────────
 
@@ -115,6 +138,8 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
       city: biz.city ?? '',
       state: biz.state ?? '',
       zip: biz.zip ?? '',
+      business_phone: biz.business_phone ?? '',
+      business_email: biz.business_email ?? '',
       commission_percentage: biz.commission_percentage ?? null,
     })
     setBizError('')
@@ -136,6 +161,8 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
           city: bizForm.city || null,
           state: bizForm.state || null,
           zip: bizForm.zip || null,
+          business_phone: bizForm.business_phone || null,
+          business_email: bizForm.business_email || null,
           commission_percentage: bizForm.commission_percentage ?? null,
         })
         .eq('id', bizId)
@@ -170,6 +197,8 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
           city: newBizForm.city || null,
           state: newBizForm.state || null,
           zip: newBizForm.zip || null,
+          business_phone: newBizForm.business_phone || null,
+          business_email: newBizForm.business_email || null,
           commission_percentage: newBizForm.commission_percentage ? parseFloat(newBizForm.commission_percentage) : null,
         })
         .select()
@@ -355,6 +384,22 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
                     <Input label="State" value={bizForm.state ?? ''} onChange={e => setBizForm(f => ({ ...f, state: e.target.value }))} />
                     <Input label="Zip" value={bizForm.zip ?? ''} onChange={e => setBizForm(f => ({ ...f, zip: e.target.value }))} />
                     <Input
+                      label="Business Phone"
+                      type="tel"
+                      className="col-span-2"
+                      value={bizForm.business_phone ?? ''}
+                      onChange={e => setBizForm(f => ({ ...f, business_phone: e.target.value }))}
+                      placeholder="+1 (555) 123-4567"
+                    />
+                    <Input
+                      label="Business Email"
+                      type="email"
+                      className="col-span-3"
+                      value={bizForm.business_email ?? ''}
+                      onChange={e => setBizForm(f => ({ ...f, business_email: e.target.value }))}
+                      placeholder="business@example.com"
+                    />
+                    <Input
                       label="Commission %"
                       type="number"
                       step="0.01"
@@ -415,6 +460,11 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
                         {[biz.industry, bizLocation(biz)].filter(Boolean).join(' · ')}
                       </p>
                     )}
+                    {(biz.business_phone || biz.business_email) && (
+                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                        {[biz.business_phone, biz.business_email].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                   </div>
                   {biz.commission_percentage != null && (
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 flex-shrink-0">
@@ -471,6 +521,22 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
                 <Input label="State" value={newBizForm.state} onChange={e => setNewBizForm(f => ({ ...f, state: e.target.value }))} />
                 <Input label="Zip" value={newBizForm.zip} onChange={e => setNewBizForm(f => ({ ...f, zip: e.target.value }))} />
                 <Input
+                  label="Business Phone"
+                  type="tel"
+                  className="col-span-2"
+                  value={newBizForm.business_phone}
+                  onChange={e => setNewBizForm(f => ({ ...f, business_phone: e.target.value }))}
+                  placeholder="+1 (555) 123-4567"
+                />
+                <Input
+                  label="Business Email"
+                  type="email"
+                  className="col-span-3"
+                  value={newBizForm.business_email}
+                  onChange={e => setNewBizForm(f => ({ ...f, business_email: e.target.value }))}
+                  placeholder="business@example.com"
+                />
+                <Input
                   label="Commission %"
                   type="number"
                   step="0.01"
@@ -508,6 +574,36 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, isAdmi
             </p>
           )}
         </div>
+      </section>
+
+      {/* ── Associated Leads ── */}
+      <section className="mb-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+          Leads ({leads.length})
+        </h3>
+        {loadingLeads ? (
+          <p className="text-xs py-2 text-center" style={{ color: 'var(--text-muted)' }}>Loading...</p>
+        ) : leads.length === 0 ? (
+          <p className="text-xs py-2 text-center" style={{ color: 'var(--text-muted)' }}>No leads yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {leads.map(lead => (
+              <button
+                key={lead.id}
+                onClick={() => onViewLead?.(lead)}
+                className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-purple-500/30 transition-all group"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{lead.business_name || lead.owner_name || 'Untitled'}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                    {lead.pipeline_stage}
+                  </p>
+                </div>
+                <ExternalLink size={13} className="text-[var(--text-muted)] group-hover:text-purple-400 flex-shrink-0 transition-colors" />
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── Danger zone (admin only) ── */}

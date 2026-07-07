@@ -43,6 +43,11 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
     setSelectedPerson(updated)
   }
 
+  const handlePersonDelete = (personId: string) => {
+    setPeople(prev => prev.filter(p => p.id !== personId))
+    setSelectedPerson(null)
+  }
+
   return (
     <div>
       <PageHeader
@@ -158,6 +163,12 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
           open={!!selectedPerson}
           onClose={() => setSelectedPerson(null)}
           onUpdate={handlePersonUpdate}
+          onDelete={handlePersonDelete}
+          onViewLead={() => {
+            // Close the PeopleDrawer when viewing a lead detail
+            // Parent (People page) should handle navigating to the CRM or opening LeadDrawer
+            setSelectedPerson(null)
+          }}
           isAdmin={isAdmin}
         />
       )}
