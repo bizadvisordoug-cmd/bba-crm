@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   User, Mail, Phone, Users, Eye, EyeOff, Save, Check,
   MapPin, UserPlus, ChevronRight, Upload, Wifi, CheckCircle, AlertCircle,
-  DollarSign, Clock, Workflow, Zap,
+  DollarSign, Clock, Workflow, Zap, Grid3x3,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -22,6 +22,7 @@ import { CommissionsSettingsPanel } from './CommissionsSettingsPanel'
 import { PipelineRemindersPanel } from './PipelineRemindersPanel'
 import { PipelineStagesPanel } from './PipelineStagesPanel'
 import { PipelineTriggersPanel } from './PipelineTriggersPanel'
+import { POSSystemsPanel } from './POSSystemsPanel'
 
 interface SettingsClientProps {
   profile: any
@@ -33,7 +34,7 @@ type TestResult = { ok: boolean; message: string }
 
 export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: SettingsClientProps) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages' | 'pipeline-triggers'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages' | 'pipeline-triggers' | 'pos-systems'>('profile')
   const [profile, setProfile] = useState(initialProfile)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -222,6 +223,7 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
     ...(isAdmin ? [{ key: 'pipeline-reminders', label: 'Pipeline Reminders', icon: Clock }] : []),
     ...(isAdmin ? [{ key: 'team', label: 'Team', icon: Users }] : []),
     ...(isAdmin ? [{ key: 'commissions', label: 'Commissions', icon: DollarSign }] : []),
+    ...(isAdmin ? [{ key: 'pos-systems', label: 'POS Systems', icon: Grid3x3 }] : []),
   ] as const
 
   // ── SSL toggle helper ─────────────────────────────────────────────────────
@@ -728,6 +730,13 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
                   </button>
                 ))}
               </div>
+            </GlassCard>
+          )}
+
+          {/* POS Systems (admin only) */}
+          {activeTab === 'pos-systems' && isAdmin && (
+            <GlassCard>
+              <POSSystemsPanel />
             </GlassCard>
           )}
         </div>
