@@ -60,7 +60,7 @@ export function ReferralSection({
               <Select
                 label="Referral Type"
                 value={referralType || ''}
-                onChange={onReferralTypeChange}
+                onChange={e => onReferralTypeChange((e.target as HTMLSelectElement).value)}
                 options={[
                   { value: 'one_time', label: 'One-Time Bonus' },
                   { value: 'residual', label: 'Monthly Residual' },
