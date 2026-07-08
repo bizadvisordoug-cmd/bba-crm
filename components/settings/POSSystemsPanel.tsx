@@ -189,6 +189,17 @@ export function POSSystemsPanel() {
                     onChange={e => updateSystem(system.id, { name: e.target.value })}
                     className="flex-1"
                   />
+                  <div className="w-24">
+                    <label className="text-xs text-gray-400">Payment Day</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={system.payment_day?.toString() || ''}
+                      onChange={e => updateSystem(system.id, { payment_day: parseInt(e.target.value) || null })}
+                      placeholder="1-31"
+                    />
+                  </div>
                 </div>
 
                 {/* Move buttons */}

@@ -23,13 +23,14 @@ export async function GET(req: NextRequest) {
     const ctDate = ctFormatter.format(new Date())
     const [month, day, year] = ctDate.split('/')
     const today = `${year}-${month}-${day}`
+    const dayOfMonth = parseInt(day)
 
-    console.log(`[Referral Residuals] Checking for payment reminders on ${today}`)
+    console.log(`[Referral Residuals] Checking for payment reminders on day ${dayOfMonth} of the month`)
 
     // Get all POS systems with their payment days
     const { data: posSystems, error: posError } = await supabase
       .from('pos_systems')
-      .select('name, display_order')
+      .select('name, payment_day')
       .eq('active', true)
       .order('display_order')
 
@@ -38,21 +39,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to query POS systems' }, { status: 500 })
     }
 
-    // For now, we'll use a hardcoded payment day. In the future, you might add payment_day to pos_systems
-    // For this MVP, let's check if today is a specific day (e.g., 15th of month)
-    const dayOfMonth = parseInt(day)
-    const paymentDay = 15 // This could be configurable per POS system
-
-    if (dayOfMonth !== paymentDay) {
-      return NextResponse.json({ message: `Not a payment day (payment day is ${paymentDay})`, emailsSent: 0 })
+    if (!posSystems || posSystems.length === 0) {
+      return NextResponse.json({ message: 'No POS systems configured', emailsSent: 0 })
     }
 
-    // Find all leads with active residual referrals
+    // Find which POS systems have a payment today (send reminder day after payment_day)
+    const posSystemsPayingToday = posSystems.filter(pos => {
+      if (!pos.payment_day) return false
+      const reminderDay = pos.payment_day === 31 ? 1 : pos.payment_day + 1
+      return dayOfMonth === reminderDay
+    })
+
+    if (posSystemsPayingToday.length === 0) {
+      return NextResponse.json({ message: 'No POS systems paying today', emailsSent: 0 })
+    }
+
+    console.log(`[Referral Residuals] Reminders due for: ${posSystemsPayingToday.map(p => p.name).join(', ')}`)
+
+    // Find all leads with active residual referrals for POS systems paying today
+    const posNamesPayingToday = posSystemsPayingToday.map(p => p.name)
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
       .select('id, business_name, referred_by, referral_percentage, referral_type, monthly_processing_volume, suggested_pos_system, status')
       .eq('referral_type', 'residual')
       .eq('status', 'Active Client')
+      .in('suggested_pos_system', posNamesPayingToday)
       .not('referred_by', 'is', null)
       .not('referral_percentage', 'is', null)
 
