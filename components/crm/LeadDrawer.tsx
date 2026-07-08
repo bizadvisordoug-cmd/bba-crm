@@ -235,6 +235,13 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
         .eq('id', lead.id)
         .select('*, assigned_rep:users(id, name, email), owner:people(id, name, phone, email), business:businesses(id, owner_id, business_name, address, city, state, zip, industry)')
         .single()
+
+      console.log('[LeadDrawer] returned from Supabase:', {
+        next_follow_up: data?.next_follow_up,
+        last_contacted: data?.last_contacted,
+        install_date: data?.install_date,
+        contract_expiration: data?.contract_expiration,
+      })
       if (error) {
         console.error('[LeadDrawer] Supabase error:', error)
         const msg = [error.message, error.details, error.hint].filter(Boolean).join(' | ')
