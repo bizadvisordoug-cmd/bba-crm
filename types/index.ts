@@ -154,6 +154,10 @@ export interface Lead {
   pos_system?: POSSystem
   lead_source?: LeadSource
   referred_by?: string
+  referral_type?: 'one_time' | 'residual'
+  referral_amount?: number
+  referral_percentage?: number
+  referral_paid?: boolean
   referral_bonus_amount?: number
   referral_bonus_paid?: boolean
   assigned_rep_id?: string
