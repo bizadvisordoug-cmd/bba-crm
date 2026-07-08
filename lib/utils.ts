@@ -10,6 +10,11 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—'
   try {
+    // If it's a date-only string (YYYY-MM-DD), format without timezone conversion
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-')
+      return format(new Date(year, parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy')
+    }
     return format(new Date(date), 'MMM d, yyyy')
   } catch {
     return '—'
@@ -19,6 +24,11 @@ export function formatDate(date: string | Date | null | undefined): string {
 export function formatDateTime(date: string | Date | null | undefined): string {
   if (!date) return '—'
   try {
+    // If it's a date-only string (YYYY-MM-DD), format without timezone conversion
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-')
+      return format(new Date(year, parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy h:mm a')
+    }
     return format(new Date(date), 'MMM d, yyyy h:mm a')
   } catch {
     return '—'
@@ -27,13 +37,34 @@ export function formatDateTime(date: string | Date | null | undefined): string {
 
 export function isOverdue(date: string | null | undefined): boolean {
   if (!date) return false
-  return isBefore(new Date(date), new Date())
+  let dateObj: Date
+  // If it's a date-only string (YYYY-MM-DD), parse without timezone conversion
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-')
+    dateObj = new Date(year, parseInt(month) - 1, parseInt(day))
+  } else {
+    dateObj = new Date(date)
+  }
+  // Compare dates only (ignore time)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return isBefore(dateObj, today)
 }
 
 export function isDueSoon(date: string | null | undefined, days = 7): boolean {
   if (!date) return false
-  const d = new Date(date)
-  return isAfter(d, new Date()) && isBefore(d, addDays(new Date(), days))
+  let dateObj: Date
+  // If it's a date-only string (YYYY-MM-DD), parse without timezone conversion
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-')
+    dateObj = new Date(year, parseInt(month) - 1, parseInt(day))
+  } else {
+    dateObj = new Date(date)
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const soon = addDays(today, days)
+  return isAfter(dateObj, today) && isBefore(dateObj, soon)
 }
 
 export function formatPhoneNumber(phone: string | null | undefined): string {
