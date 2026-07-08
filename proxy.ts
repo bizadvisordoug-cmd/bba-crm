@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  if (pathname.startsWith('/auth') || pathname.startsWith('/book') || pathname.startsWith('/api/book')) {
+  if (pathname.startsWith('/auth') || pathname.startsWith('/book') || pathname.startsWith('/api/book') || pathname.startsWith('/api/cron')) {
     if (user && pathname === '/auth/login') {
       return NextResponse.redirect(new URL('/', request.url))
     }
