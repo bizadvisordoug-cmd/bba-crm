@@ -39,6 +39,20 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity'>('overview')
   const [form, setForm] = useState<Partial<Lead>>(lead)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Helper to format date for input display (avoids timezone conversion)
+  const formatDateForInput = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return ''
+    // If it's already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+    // Otherwise parse and reformat
+    try {
+      const [year, month, day] = dateStr.split('T')[0].split('-')
+      return `${year}-${month}-${day}`
+    } catch {
+      return ''
+    }
+  }
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [people, setPeople] = useState<Array<{id: string; name: string}>>([])
@@ -614,10 +628,10 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
             <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Timeline</h3>
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Last Contacted" type="date" value={form.last_contacted || ''} onChange={e => set('last_contacted', e.target.value)} />
-                <Input label="Next Follow-Up" type="date" value={form.next_follow_up || ''} onChange={e => set('next_follow_up', e.target.value)} />
-                <Input label="Install Date" type="date" value={form.install_date || ''} onChange={e => set('install_date', e.target.value)} />
-                <Input label="Contract Expiration" type="date" value={form.contract_expiration || ''} onChange={e => set('contract_expiration', e.target.value)} />
+                <Input label="Last Contacted" type="date" value={formatDateForInput(form.last_contacted)} onChange={e => set('last_contacted', e.target.value)} />
+                <Input label="Next Follow-Up" type="date" value={formatDateForInput(form.next_follow_up)} onChange={e => set('next_follow_up', e.target.value)} />
+                <Input label="Install Date" type="date" value={formatDateForInput(form.install_date)} onChange={e => set('install_date', e.target.value)} />
+                <Input label="Contract Expiration" type="date" value={formatDateForInput(form.contract_expiration)} onChange={e => set('contract_expiration', e.target.value)} />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
