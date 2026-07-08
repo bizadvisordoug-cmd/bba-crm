@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/pipeline-reminders",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/follow-up-reminders-due",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/follow-up-reminders-overdue",
+      "schedule": "0 14 * * *"
     }
   ]
 }
