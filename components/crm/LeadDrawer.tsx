@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { StageBadge, StatusBadge, Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotesSection } from '@/components/crm/NotesSection'
+import { ReferralAgreementsSection } from '@/components/crm/ReferralAgreementsSection'
 import { createClient } from '@/lib/supabase'
 import { formatDate, formatCurrency, formatPercent, isOverdue, PIPELINE_STAGES, LEAD_SOURCES } from '@/lib/utils'
 import { getPOSSystems } from '@/lib/pos-systems'
@@ -37,7 +38,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity' | 'referrals'>('overview')
   const [form, setForm] = useState<Partial<Lead>>(lead)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [posSystems, setPosSystems] = useState<string[]>([])
@@ -318,7 +319,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
     }
   }
 
-  const tabs = ['overview', 'notes', 'documents', 'activity'] as const
+  const tabs = ['overview', 'notes', 'documents', 'activity', 'referrals'] as const
 
   return (
     <Drawer open={open} onClose={onClose} width="580px">
@@ -732,6 +733,13 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       {activeTab === 'activity' && (
         <div>
           <ActivitySection leadId={lead.id} />
+        </div>
+      )}
+
+      {/* Referrals Tab */}
+      {activeTab === 'referrals' && (
+        <div>
+          <ReferralAgreementsSection leadId={lead.id} canEdit={editing} />
         </div>
       )}
 
