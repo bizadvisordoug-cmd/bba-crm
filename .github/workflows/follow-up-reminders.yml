@@ -1,0 +1,35 @@
+name: Follow-Up Reminders
+
+on:
+  schedule:
+    # Runs at 8am Central Time daily (14:00 UTC)
+    # The schedule uses UTC time, so 14:00 UTC = 8am CT (Nov-Mar) / 9am CDT (Mar-Nov)
+    - cron: '0 14 * * *'
+  workflow_dispatch:  # Allows manual trigger from GitHub UI for testing
+
+jobs:
+  send-due-reminders:
+    runs-on: ubuntu-latest
+    name: Send follow-up due reminders
+    steps:
+      - name: Trigger follow-up due reminder cron
+        run: |
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/follow-up-reminders-due"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+
+  send-overdue-reminders:
+    runs-on: ubuntu-latest
+    name: Send overdue reminders
+    steps:
+      - name: Trigger overdue reminder cron
+        run: |
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/follow-up-reminders-overdue"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
