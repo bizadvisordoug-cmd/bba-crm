@@ -15,11 +15,8 @@ jobs:
       - name: Trigger follow-up due reminder cron
         run: |
           curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/cron/follow-up-reminders-due"
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          APP_URL: ${{ secrets.APP_URL }}
+            -H "Authorization: Bearer YzU5OGUyZGEtMzQ2NC00OTMzLTk3MTctNjIwMTIwNGRiZjcw" \
+            "https://bba-crm.vercel.app/api/cron/follow-up-reminders-due"
 
   send-overdue-reminders:
     runs-on: ubuntu-latest
@@ -28,8 +25,5 @@ jobs:
       - name: Trigger overdue reminder cron
         run: |
           curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/cron/follow-up-reminders-overdue"
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          APP_URL: ${{ secrets.APP_URL }}
+            -H "Authorization: Bearer YzU5OGUyZGEtMzQ2NC00OTMzLTk3MTctNjIwMTIwNGRiZjcw" \
+            "https://bba-crm.vercel.app/api/cron/follow-up-reminders-overdue"
