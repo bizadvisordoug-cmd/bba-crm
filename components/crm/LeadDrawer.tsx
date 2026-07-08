@@ -15,7 +15,8 @@ import { StageBadge, StatusBadge, Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotesSection } from '@/components/crm/NotesSection'
 import { createClient } from '@/lib/supabase'
-import { formatDate, formatCurrency, formatPercent, isOverdue, PIPELINE_STAGES, POS_SYSTEMS, LEAD_SOURCES } from '@/lib/utils'
+import { formatDate, formatCurrency, formatPercent, isOverdue, PIPELINE_STAGES, LEAD_SOURCES } from '@/lib/utils'
+import { getPOSSystems } from '@/lib/pos-systems'
 import { geocodeAddress } from '@/lib/geocode'
 import type { Lead } from '@/types'
 
@@ -39,6 +40,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity'>('overview')
   const [form, setForm] = useState<Partial<Lead>>(lead)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [posSystems, setPosSystems] = useState<string[]>([])
 
   // Helper to format date for input display (avoids timezone conversion)
   const formatDateForInput = (dateStr: string | null | undefined): string => {
@@ -68,6 +70,11 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [commissionRate, setCommissionRate] = useState<number | null>(null)
   const [commissionRateId, setCommissionRateId] = useState<string | null>(null)
   const [commissionPct, setCommissionPct] = useState('')
+
+  useEffect(() => {
+    // Fetch POS systems once when component mounts
+    getPOSSystems().then(setPosSystems)
+  }, [])
 
   useEffect(() => {
     if (!editing) {
@@ -574,7 +581,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
                 <Input label="Monthly Volume ($)" type="number" value={form.monthly_processing_volume?.toString() || ''} onChange={e => set('monthly_processing_volume', parseFloat(e.target.value))} />
                 <Input label="Current Processor" value={form.current_processor || ''} onChange={e => set('current_processor', e.target.value)} />
                 <Input label="Current Rate (%)" type="number" step="0.01" value={form.current_rate?.toString() || ''} onChange={e => set('current_rate', parseFloat(e.target.value))} />
-                <Select label="Suggested POS System" value={form.pos_system || ''} onChange={e => set('pos_system', e.target.value as any)} options={POS_SYSTEMS.map(p => ({ value: p, label: p }))} placeholder="Select..." />
+                <Select label="Suggested POS System" value={form.pos_system || ''} onChange={e => set('pos_system', e.target.value as any)} options={posSystems.map(p => ({ value: p, label: p }))} placeholder="Select..." />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
