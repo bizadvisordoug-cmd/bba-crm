@@ -35,6 +35,16 @@ export type POSSystem =
   | 'Spot On'
   | 'Basic Terminal'
 
+export interface POSSystemConfig {
+  id: string
+  name: POSSystem
+  display_order?: number
+  payment_day?: number
+  active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
 export type LeadSource = 'Referral' | 'Cold Call' | 'Cold Email' | 'Other'
 
 export interface Person {

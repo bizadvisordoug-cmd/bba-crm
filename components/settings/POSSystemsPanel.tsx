@@ -7,16 +7,17 @@ import { Input } from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase'
 import { clearPOSSystemsCache } from '@/lib/pos-systems'
 
-interface POSSystem {
+interface POSSystemItem {
   id: string
   name: string
   display_order: number
+  payment_day?: number
   active: boolean
 }
 
 export function POSSystemsPanel() {
   const supabase = createClient()
-  const [systems, setSystems] = useState<POSSystem[]>([])
+  const [systems, setSystems] = useState<POSSystemItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [newSystemName, setNewSystemName] = useState('')
