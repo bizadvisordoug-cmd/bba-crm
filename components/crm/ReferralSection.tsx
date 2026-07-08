@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Input, Select } from '@/components/ui/Input'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { createClient } from '@/lib/supabase'
 
 interface ReferralSectionProps {
@@ -34,46 +33,6 @@ export function ReferralSection({
   onReferralPaidChange,
   canEdit,
 }: ReferralSectionProps) {
-  const supabase = createClient()
-  const [partners, setPartners] = useState<Array<{ id: string; name: string }>>([])
-
-  useEffect(() => {
-    loadPartners()
-  }, [])
-
-  const loadPartners = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('referral_partners')
-        .select('id, name')
-        .eq('active', true)
-        .order('name')
-
-      if (!error && data) {
-        setPartners(data)
-      }
-    } catch (err) {
-      console.error('Failed to load referral partners:', err)
-    }
-  }
-
-  const handleAddPartner = async (newName: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('referral_partners')
-        .insert([{ name: newName, active: true }])
-        .select('id, name')
-        .single()
-
-      if (error) throw error
-      if (data) {
-        setPartners([...partners, data])
-        onReferredByChange(data.name)
-      }
-    } catch (err) {
-      console.error('Failed to create referral partner:', err)
-    }
-  }
 
   const estimatedMonthly = referralPercentage && monthlyProcessingVolume
     ? (monthlyProcessingVolume * referralPercentage) / 100
@@ -87,14 +46,12 @@ export function ReferralSection({
 
       {canEdit ? (
         <div className="space-y-3">
-          {/* Referred By - with create option */}
-          <SearchableSelect
+          {/* Referred By */}
+          <Input
             label="Referred By"
+            placeholder="Enter referral partner name..."
             value={referredBy || ''}
-            onChange={onReferredByChange}
-            options={partners.map(p => ({ value: p.name, label: p.name }))}
-            placeholder="Select or create referral partner..."
-            onCreateNew={handleAddPartner}
+            onChange={e => onReferredByChange(e.target.value)}
           />
 
           {/* Referral Type */}
