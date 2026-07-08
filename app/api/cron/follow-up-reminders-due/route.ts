@@ -63,9 +63,11 @@ export async function GET(req: NextRequest) {
     }
 
     const smtpConfig = adminUsers?.find(u => u.smtp_host && u.smtp_user && u.smtp_pass)
+    console.log('[Follow-up Reminders] Admin users found:', adminUsers?.length || 0)
+    console.log('[Follow-up Reminders] SMTP config:', smtpConfig ? { host: smtpConfig.smtp_host, port: smtpConfig.smtp_port, user: smtpConfig.smtp_user } : 'NONE FOUND')
     if (!smtpConfig) {
       console.warn('[Follow-up Reminders] No SMTP configured')
-      return NextResponse.json({ error: 'SMTP not configured' }, { status: 500 })
+      return NextResponse.json({ error: 'SMTP not configured', adminCount: adminUsers?.length || 0 }, { status: 500 })
     }
 
     const transporter = nodemailer.createTransport({
@@ -124,12 +126,14 @@ export async function GET(req: NextRequest) {
       emailBody += `<p style="font-size: 12px; color: #999; margin-top: 20px;">This is an automated reminder for follow-ups scheduled for today.</p>`
 
       try {
+        console.log(`[Follow-up Reminders] Sending email to ${rep.email} for ${unseenLeads.length} leads`)
         await transporter.sendMail({
           from: smtpConfig.smtp_user,
           to: rep.email,
           subject: `Follow-Up Reminder — ${unseenLeads.length} lead${unseenLeads.length === 1 ? '' : 's'} due today`,
           html: emailBody,
         })
+        console.log(`[Follow-up Reminders] Email sent successfully to ${rep.email}`)
 
         // Mark reminders as sent
         const remindersToInsert = unseenLeads.map(lead => ({
