@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
           id,
           amount,
           who_pays,
-          leads:lead_id(id, business_name),
+          lead:lead_id(id, business_name, status),
           start_date
         `)
         .eq('partner_id', partner.id)
@@ -97,8 +97,8 @@ export async function GET(req: NextRequest) {
       }
 
       // Filter to only leads that are active clients
-      const activeAgreements = agreements.filter((a: any) => {
-        const lead = a.leads
+      const activeAgreements = (agreements || []).filter((a: any) => {
+        const lead = a.lead
         return lead && lead.status === 'Active Client'
       })
 
@@ -119,7 +119,8 @@ export async function GET(req: NextRequest) {
       emailBody += `</tr>`
 
       for (const agreement of activeAgreements) {
-        const lead = agreement.leads
+        const lead = agreement.lead
+        if (!lead) continue
         const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/crm?lead=${lead.id}`
         const whoPays = agreement.who_pays === 'us' ? 'We Pay' : 'Partner Pays'
         const whoPaysBg = agreement.who_pays === 'us' ? '#fee2e2' : '#dbeafe'
