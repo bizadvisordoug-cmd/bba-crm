@@ -13,7 +13,7 @@
       "schedule": "0 14 * * *"
     },
     {
-      "path": "/api/cron/referral-payment-reminders",
+      "path": "/api/cron/referral-residual-reminders",
       "schedule": "0 8 * * *"
     }
   ]
