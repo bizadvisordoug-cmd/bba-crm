@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { StageBadge, StatusBadge, Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotesSection } from '@/components/crm/NotesSection'
-import { ReferralAgreementsSection } from '@/components/crm/ReferralAgreementsSection'
+import { ReferralSection } from '@/components/crm/ReferralSection'
 import { createClient } from '@/lib/supabase'
 import { formatDate, formatCurrency, formatPercent, isOverdue, PIPELINE_STAGES, LEAD_SOURCES } from '@/lib/utils'
 import { getPOSSystems } from '@/lib/pos-systems'
@@ -38,7 +38,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity' | 'referrals'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'documents' | 'activity'>('overview')
   const [form, setForm] = useState<Partial<Lead>>(lead)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [posSystems, setPosSystems] = useState<string[]>([])
@@ -319,7 +319,7 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
     }
   }
 
-  const tabs = ['overview', 'notes', 'documents', 'activity', 'referrals'] as const
+  const tabs = ['overview', 'notes', 'documents', 'activity'] as const
 
   return (
     <Drawer open={open} onClose={onClose} width="580px">
@@ -659,38 +659,29 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
           </section>
 
           {/* Source & Referral */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Source & Referral</h3>
-            {editing ? (
-              <div className="grid grid-cols-2 gap-3">
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Source</h3>
+              {editing ? (
                 <Select label="Lead Source" value={form.lead_source || ''} onChange={e => set('lead_source', e.target.value as any)} options={LEAD_SOURCES.map(s => ({ value: s, label: s }))} placeholder="Select..." />
-                <Input label="Referred By" value={form.referred_by || ''} onChange={e => set('referred_by', e.target.value)} />
-                <Input label="Referral Bonus ($)" type="number" value={form.referral_bonus_amount?.toString() || ''} onChange={e => set('referral_bonus_amount', parseFloat(e.target.value))} />
-                <div className="flex items-center gap-2 pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <div
-                      onClick={() => set('referral_bonus_paid', !form.referral_bonus_paid)}
-                      className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${form.referral_bonus_paid ? 'bg-purple-600' : 'bg-white/10'}`}
-                    >
-                      <div className={`w-4 h-4 bg-white rounded-full mt-0.5 transition-transform ${form.referral_bonus_paid ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                    </div>
-                    <span className="text-xs text-[var(--text-secondary)]">Bonus paid</span>
-                  </label>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
+              ) : (
                 <InfoItem icon={<User size={13} />} label="Lead Source" value={lead.lead_source} />
-                <InfoItem icon={<User size={13} />} label="Referred By" value={lead.referred_by} />
-                {lead.referral_bonus_amount && (
-                  <InfoItem
-                    icon={<DollarSign size={13} />}
-                    label="Referral Bonus"
-                    value={`${formatCurrency(lead.referral_bonus_amount)} ${lead.referral_bonus_paid ? '✓ Paid' : '· Unpaid'}`}
-                  />
-                )}
-              </div>
-            )}
+              )}
+            </div>
+            <ReferralSection
+              referredBy={form.referred_by}
+              referralType={form.referral_type}
+              referralAmount={form.referral_amount}
+              referralPercentage={form.referral_percentage}
+              referralPaid={form.referral_paid}
+              monthlyProcessingVolume={form.monthly_processing_volume}
+              onReferredByChange={v => set('referred_by', v)}
+              onReferralTypeChange={v => set('referral_type', v)}
+              onReferralAmountChange={v => set('referral_amount', v)}
+              onReferralPercentageChange={v => set('referral_percentage', v)}
+              onReferralPaidChange={v => set('referral_paid', v)}
+              canEdit={editing}
+            />
           </section>
 
           {/* Assigned rep */}
@@ -736,12 +727,6 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
         </div>
       )}
 
-      {/* Referrals Tab */}
-      {activeTab === 'referrals' && (
-        <div>
-          <ReferralAgreementsSection leadId={lead.id} canEdit={editing} />
-        </div>
-      )}
 
       {/* Delete — admin only, hidden while editing */}
       {deleteError && (

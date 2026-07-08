@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import {
   User, Mail, Phone, Users, Eye, EyeOff, Save, Check,
   MapPin, UserPlus, ChevronRight, Upload, Wifi, CheckCircle, AlertCircle,
-  DollarSign, Clock, Workflow, Zap, Grid3x3, Handshake,
+  DollarSign, Clock, Workflow, Zap, Grid3x3,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -23,7 +23,6 @@ import { PipelineRemindersPanel } from './PipelineRemindersPanel'
 import { PipelineStagesPanel } from './PipelineStagesPanel'
 import { PipelineTriggersPanel } from './PipelineTriggersPanel'
 import { POSSystemsPanel } from './POSSystemsPanel'
-import { ReferralProgramPanel } from './ReferralProgramPanel'
 
 interface SettingsClientProps {
   profile: any
@@ -35,7 +34,7 @@ type TestResult = { ok: boolean; message: string }
 
 export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: SettingsClientProps) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages' | 'pipeline-triggers' | 'pos-systems' | 'referrals'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'integrations' | 'map' | 'team' | 'commissions' | 'pipeline-reminders' | 'pipeline-stages' | 'pipeline-triggers' | 'pos-systems'>('profile')
   const [profile, setProfile] = useState(initialProfile)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -225,7 +224,6 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
     ...(isAdmin ? [{ key: 'team', label: 'Team', icon: Users }] : []),
     ...(isAdmin ? [{ key: 'commissions', label: 'Commissions', icon: DollarSign }] : []),
     ...(isAdmin ? [{ key: 'pos-systems', label: 'POS Systems', icon: Grid3x3 }] : []),
-    ...(isAdmin ? [{ key: 'referrals', label: 'Referral Program', icon: Handshake }] : []),
   ] as const
 
   // ── SSL toggle helper ─────────────────────────────────────────────────────
@@ -742,12 +740,6 @@ export function SettingsClient({ profile: initialProfile, allUsers, isAdmin }: S
             </GlassCard>
           )}
 
-          {/* Referral Program (admin only) */}
-          {activeTab === 'referrals' && isAdmin && (
-            <GlassCard>
-              <ReferralProgramPanel />
-            </GlassCard>
-          )}
         </div>
       </div>
 
