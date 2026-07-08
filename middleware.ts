@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 
-export async function middleware(req: NextRequest) {
-  // Allow API routes to bypass auth
-  if (req.nextUrl.pathname.startsWith('/api/')) {
+export function middleware(req: NextRequest) {
+  // Allow API routes and public assets to bypass auth
+  const pathname = req.nextUrl.pathname
+
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
-  // Check auth for all other routes
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user && !req.nextUrl.pathname.startsWith('/auth/')) {
-    return NextResponse.redirect(new URL('/auth/login', req.url))
+  if (pathname.startsWith('/auth/')) {
+    return NextResponse.next()
   }
 
+  if (pathname.startsWith('/_next/') || pathname.startsWith('/favicon')) {
+    return NextResponse.next()
+  }
+
+  // For other routes, let the app handle auth via the (app) layout
   return NextResponse.next()
 }
 
