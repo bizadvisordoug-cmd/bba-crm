@@ -10,9 +10,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/auth/login')
-  }
+  // TODO: Re-enable once middleware properly protects API routes
+  // if (!user) {
+  //   redirect('/auth/login')
+  // }
 
   const { data: profile } = await supabase
     .from('users')
