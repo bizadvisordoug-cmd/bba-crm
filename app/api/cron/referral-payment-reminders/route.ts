@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
       emailBody += `</tr>`
 
       for (const agreement of activeAgreements) {
-        const lead = agreement.lead
+        const lead = (agreement as any).lead as { id: string; business_name: string; status: string }
         if (!lead) continue
         const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/crm?lead=${lead.id}`
         const whoPays = agreement.who_pays === 'us' ? 'We Pay' : 'Partner Pays'
