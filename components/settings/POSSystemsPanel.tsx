@@ -197,7 +197,7 @@ export function POSSystemsPanel() {
                       min="1"
                       max="31"
                       value={system.payment_day?.toString() || ''}
-                      onChange={e => updateSystem(system.id, { payment_day: parseInt(e.target.value) || null })}
+                      onChange={e => updateSystem(system.id, { payment_day: e.target.value ? parseInt(e.target.value) : undefined })}
                       placeholder="1-31"
                     />
                   </div>
