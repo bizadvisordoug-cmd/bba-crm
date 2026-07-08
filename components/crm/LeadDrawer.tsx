@@ -669,12 +669,12 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
               )}
             </div>
             <ReferralSection
-              referredBy={(form.referred_by as string | null) || null}
-              referralType={(form.referral_type as string | null) || null}
-              referralAmount={(form.referral_amount as number | null) || null}
-              referralPercentage={(form.referral_percentage as number | null) || null}
-              referralPaid={(form.referral_paid as boolean | null) || null}
-              monthlyProcessingVolume={(form.monthly_processing_volume as number | null) || null}
+              referredBy={(form as any).referred_by || null}
+              referralType={(form as any).referral_type || null}
+              referralAmount={(form as any).referral_amount || null}
+              referralPercentage={(form as any).referral_percentage || null}
+              referralPaid={(form as any).referral_paid || null}
+              monthlyProcessingVolume={(form as any).monthly_processing_volume || null}
               onReferredByChange={v => set('referred_by', v)}
               onReferralTypeChange={v => set('referral_type', v)}
               onReferralAmountChange={v => set('referral_amount', v)}
