@@ -75,7 +75,7 @@ export function POSSystemsPanel() {
     }
   }
 
-  const updateSystem = async (id: string, updates: Partial<POSSystem>) => {
+  const updateSystem = async (id: string, updates: Partial<POSSystemItem>) => {
     setError('')
     setSuccess('')
 
