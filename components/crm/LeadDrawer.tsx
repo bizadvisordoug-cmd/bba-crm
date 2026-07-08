@@ -208,6 +208,21 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
         }
       }
 
+      // Normalize date fields to ensure consistent timezone handling
+      // HTML date inputs return YYYY-MM-DD in local time, but we need UTC
+      const dateFields = ['last_contacted', 'next_follow_up', 'install_date', 'contract_expiration']
+      for (const field of dateFields) {
+        if (payload[field as keyof typeof payload]) {
+          const dateStr = payload[field as keyof typeof payload] as string
+          // Parse the date string in UTC to avoid timezone conversion
+          const parts = dateStr.split('-')
+          if (parts.length === 3) {
+            const utcDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])))
+            payload[field as keyof typeof payload] = utcDate.toISOString().split('T')[0]
+          }
+        }
+      }
+
       console.log('[LeadDrawer] saving payload:', JSON.stringify(payload, null, 2))
       const { data, error } = await supabase
         .from('leads')
