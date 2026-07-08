@@ -13,7 +13,7 @@ export function formatDate(date: string | Date | null | undefined): string {
     // If it's a date-only string (YYYY-MM-DD), format without timezone conversion
     if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const [year, month, day] = date.split('-')
-      return format(new Date(year, parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy')
+      return format(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy')
     }
     return format(new Date(date), 'MMM d, yyyy')
   } catch {
@@ -27,7 +27,7 @@ export function formatDateTime(date: string | Date | null | undefined): string {
     // If it's a date-only string (YYYY-MM-DD), format without timezone conversion
     if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const [year, month, day] = date.split('-')
-      return format(new Date(year, parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy h:mm a')
+      return format(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)), 'MMM d, yyyy h:mm a')
     }
     return format(new Date(date), 'MMM d, yyyy h:mm a')
   } catch {
@@ -41,7 +41,7 @@ export function isOverdue(date: string | null | undefined): boolean {
   // If it's a date-only string (YYYY-MM-DD), parse without timezone conversion
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [year, month, day] = date.split('-')
-    dateObj = new Date(year, parseInt(month) - 1, parseInt(day))
+    dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
   } else {
     dateObj = new Date(date)
   }
@@ -57,7 +57,7 @@ export function isDueSoon(date: string | null | undefined, days = 7): boolean {
   // If it's a date-only string (YYYY-MM-DD), parse without timezone conversion
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [year, month, day] = date.split('-')
-    dateObj = new Date(year, parseInt(month) - 1, parseInt(day))
+    dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
   } else {
     dateObj = new Date(date)
   }
