@@ -121,9 +121,9 @@ export async function GET(req: NextRequest) {
       emailBody += `<ul>`
 
       for (const lead of unseenLeads) {
-        const leadName = lead.business_name || (lead.business && typeof lead.business === 'object' && (lead.business as any).business_name) || 'Untitled'
+        const leadName = lead.business_name || lead.owner_name || 'Untitled'
         const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/crm?lead=${lead.id}`
-        emailBody += `<li><a href="${leadUrl}">${leadName}</a> (Owner: ${lead.owner_name || (lead.owner && typeof lead.owner === 'object' && (lead.owner as any).name) || 'Unknown'})</li>`
+        emailBody += `<li><a href="${leadUrl}">${leadName}</a></li>`
       }
 
       emailBody += `</ul>`
