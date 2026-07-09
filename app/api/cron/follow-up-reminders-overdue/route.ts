@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
       emailBody += `</tr>`
 
       for (const lead of leadsWithDaysOverdue) {
-        const leadName = lead.business_name || (lead.business && typeof lead.business === 'object' && (lead.business as any).business_name) || 'Untitled'
+        const leadName = lead.business_name || lead.owner_name || 'Untitled'
         const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/crm?lead=${lead.id}`
         const dueDate = new Date(lead.next_follow_up).toLocaleDateString()
         const overdueStyle = lead.daysOverdue > 7 ? 'color: #ef4444; font-weight: bold;' : ''
