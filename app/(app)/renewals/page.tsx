@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase'
 import { Lead } from '@/types'
 import Link from 'next/link'
 import { Calendar, AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function RenewalsPage() {
+  const router = useRouter()
   const supabase = createClient()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,16 +29,16 @@ export default function RenewalsPage() {
         const todayStr = today.toISOString().split('T')[0]
         const in90DaysStr = in90Days.toISOString().split('T')[0]
 
-        const { data, error: err } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('status', 'Active Client')
-          .gte('contract_expiration', todayStr)
-          .lte('contract_expiration', in90DaysStr)
-          .order('contract_expiration', { ascending: true })
+        // Fetch from API route that has service role access
+        const response = await fetch('/api/renewals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ todayStr, in90DaysStr }),
+        })
 
-        if (err) throw err
-        setLeads(data || [])
+        if (!response.ok) throw new Error('Failed to fetch renewals')
+        const data = await response.json()
+        setLeads(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load renewals')
       } finally {
@@ -129,12 +131,12 @@ export default function RenewalsPage() {
                       {daysLeft} days
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <Link
-                        href={`/crm?lead=${lead.id}`}
+                      <button
+                        onClick={() => router.push(`/crm/${lead.id}`)}
                         className="text-purple-600 hover:text-purple-700 font-medium"
                       >
                         View
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 )
