@@ -39,7 +39,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (!overdueLeads || overdueLeads.length === 0) {
-      return NextResponse.json({ message: 'No overdue follow-ups', emailsSent: 0 })
+      return NextResponse.json({
+        message: 'No overdue follow-ups',
+        emailsSent: 0,
+        debug: { today, query: 'lt(next_follow_up, today)', leadsError }
+      })
     }
 
     // Group leads by assigned_rep_id
