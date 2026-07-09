@@ -110,7 +110,7 @@ export default function RenewalsPage() {
                 return (
                   <tr key={lead.id} className="hover:bg-gray-800/50 bg-gray-900/30">
                     <td className="px-6 py-4 text-sm font-medium text-white">
-                      {lead.business_name || 'Untitled'}
+                      {lead.business_name || (lead.business && typeof lead.business === 'object' && (lead.business as any).business_name) || 'Untitled'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
                       {lead.owner_name || (lead.owner && typeof lead.owner === 'object' && (lead.owner as any).name) || 'N/A'}
