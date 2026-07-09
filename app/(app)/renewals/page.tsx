@@ -97,33 +97,33 @@ export default function RenewalsPage() {
       ) : (
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-900 border-b border-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Business</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Owner</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Rep</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Expiration Date</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Days Left</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Action</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-white">Business</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-white">Owner</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-white">Rep</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-white">Expiration Date</th>
+                <th className="px-6 py-3 text-center text-sm font-semibold text-white">Days Left</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-white">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-700">
               {leads.map((lead) => {
                 const daysLeft = lead.contract_expiration ? getDaysUntilExpiration(lead.contract_expiration) : 0
                 return (
-                  <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  <tr key={lead.id} className="hover:bg-gray-800/50 bg-gray-900/30">
+                    <td className="px-6 py-4 text-sm font-medium text-white">
                       {lead.business_name || 'Untitled'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {lead.owner_name || '—'}
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {lead.owner_name || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {lead.assigned_rep?.name || '—'}
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {lead.assigned_rep?.name || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-6 py-4 text-sm text-gray-300">
                       <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-gray-400" />
+                        <Calendar size={16} className="text-gray-500" />
                         {lead.contract_expiration ? formatDate(lead.contract_expiration) : '—'}
                       </div>
                     </td>
@@ -132,8 +132,8 @@ export default function RenewalsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <button
-                        onClick={() => router.push(`/crm/${lead.id}`)}
-                        className="text-purple-600 hover:text-purple-700 font-medium"
+                        onClick={() => router.push(`/crm?lead=${lead.id}`)}
+                        className="text-purple-400 hover:text-purple-300 font-medium"
                       >
                         View
                       </button>
