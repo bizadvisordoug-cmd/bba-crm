@@ -281,7 +281,7 @@ export function DashboardClient({
               <h2 className="font-semibold text-white">Upcoming Renewals</h2>
               <span className="badge-amber text-xs px-2 py-0.5 rounded-full">Next 90 days</span>
             </div>
-            <Link href="/crm?filter=renewal">
+            <Link href="/renewals">
               <Button variant="ghost" size="sm">View all →</Button>
             </Link>
           </div>
