@@ -116,7 +116,7 @@ export default function RenewalsPage() {
                       {lead.business_name || 'Untitled'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
-                      {lead.owner_name || 'N/A'}
+                      {lead.owner_name || (lead.owner && typeof lead.owner === 'object' && (lead.owner as any).name) || 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
                       {lead.assigned_rep?.name || 'N/A'}

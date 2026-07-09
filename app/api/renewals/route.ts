@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('leads')
-      .select('id, business_name, owner_name, contract_expiration, assigned_rep_id, assigned_rep:users(name)')
+      .select('id, business_name, owner_name, contract_expiration, assigned_rep_id, owner:people(name), assigned_rep:users(name)')
       .eq('status', 'Active Client')
       .not('contract_expiration', 'is', null)
       .gte('contract_expiration', todayStr)
