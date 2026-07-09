@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +12,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = await createServerSupabaseClient()
+    // Use service role (admin) for cron jobs to bypass RLS
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    )
 
     // Get today's date in Central Time (CT/CDT)
     const ctFormatter = new Intl.DateTimeFormat('en-US', {
