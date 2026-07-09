@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Search, Filter, Trash2, Download, Upload } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -23,6 +24,7 @@ interface CRMClientProps {
 }
 
 export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDeleteLeads, reps }: CRMClientProps) {
+  const searchParams = useSearchParams()
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [search, setSearch] = useState('')
   const [filterRep, setFilterRep] = useState('')
@@ -30,6 +32,17 @@ export function CRMClient({ leads: initialLeads, currentUserId, isAdmin, canDele
   const [filterStatus, setFilterStatus] = useState('')
   const [filterPOS, setFilterPOS] = useState('')
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+
+  // Handle lead query parameter from URL
+  useEffect(() => {
+    const leadId = searchParams.get('lead')
+    if (leadId) {
+      const lead = leads.find(l => l.id === leadId)
+      if (lead) {
+        setSelectedLead(lead)
+      }
+    }
+  }, [searchParams, leads])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
