@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     // Find all leads with next_follow_up < today (overdue), grouped by assigned rep
     const { data: overdueLeads, error: leadsError } = await supabase
       .from('leads')
-      .select('id, business_name, owner_name, assigned_rep_id, next_follow_up, owner:people(name), business:businesses(business_name)')
+      .select('id, business_name, owner_name, assigned_rep_id, next_follow_up')
       .lt('next_follow_up', today)
       .not('assigned_rep_id', 'is', null)
       .not('next_follow_up', 'is', null)
