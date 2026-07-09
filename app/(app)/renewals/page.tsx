@@ -5,10 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { Lead } from '@/types'
 import Link from 'next/link'
 import { Calendar, AlertCircle } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-
 export default function RenewalsPage() {
-  const router = useRouter()
   const supabase = createClient()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
@@ -131,12 +128,12 @@ export default function RenewalsPage() {
                       {daysLeft} days
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => router.push(`/crm?lead=${lead.id}`)}
+                      <Link
+                        href={`/crm?lead=${lead.id}`}
                         className="text-purple-400 hover:text-purple-300 font-medium"
                       >
                         View
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 )
