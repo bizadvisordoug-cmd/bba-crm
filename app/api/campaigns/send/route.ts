@@ -127,15 +127,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Enrollment not active' })
     }
 
-    const steps = enrollment.campaign.steps.sort((a: any, b: any) => a.step_number - b.step_number)
+    const steps = enrollment.campaign.steps?.sort((a: any, b: any) => a.step_number - b.step_number) || []
     const currentStep = steps.find((s: any) => s.step_number === enrollment.current_step)
 
-    if (!currentStep) {
-      await supabase
-        .from('campaign_enrollments')
-        .update({ status: 'completed' })
-        .eq('id', enrollmentId)
-      return NextResponse.json({ message: 'Campaign completed' })
+    if (!currentStep || steps.length === 0) {
+      console.warn(`No step found for enrollment ${enrollmentId}, current_step: ${enrollment.current_step}, available steps:`, steps.map((s: any) => s.step_number))
+      return NextResponse.json({ message: 'No steps available' }, { status: 400 })
     }
 
     const rep = enrollment.lead.assigned_rep
