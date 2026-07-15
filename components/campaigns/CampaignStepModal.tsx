@@ -532,8 +532,48 @@ export function CampaignStepModal({
     if (!confirmDelete) { setConfirmDelete(true); return }
     setDeleting(true)
     try {
+      const deletedStepNumber = step!.step_number
+
+      // Delete the step
       const { error: err } = await supabase.from('campaign_steps').delete().eq('id', step!.id)
       if (err) throw err
+
+      // Renumber remaining steps with higher step_number
+      const { data: stepsToRenumber, error: fetchErr } = await supabase
+        .from('campaign_steps')
+        .select('id, step_number')
+        .eq('campaign_id', campaign_id)
+        .gt('step_number', deletedStepNumber)
+        .order('step_number', { ascending: true })
+
+      if (fetchErr) throw fetchErr
+
+      // Update each step's number down by 1
+      for (const s of stepsToRenumber || []) {
+        await supabase
+          .from('campaign_steps')
+          .update({ step_number: s.step_number - 1 })
+          .eq('id', s.id)
+      }
+
+      // Update enrollments that reference the renumbered steps
+      if ((stepsToRenumber || []).length > 0) {
+        const { data: enrollments, error: enrollErr } = await supabase
+          .from('campaign_enrollments')
+          .select('id, current_step')
+          .eq('campaign_id', campaign_id)
+          .gt('current_step', deletedStepNumber)
+
+        if (enrollErr) throw enrollErr
+
+        for (const e of enrollments || []) {
+          await supabase
+            .from('campaign_enrollments')
+            .update({ current_step: e.current_step - 1 })
+            .eq('id', e.id)
+        }
+      }
+
       onDelete?.(step!.id)
       onClose()
     } catch (err) {
