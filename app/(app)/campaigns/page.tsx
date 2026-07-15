@@ -36,13 +36,18 @@ export default async function CampaignsPage() {
     .order('enrolled_at', { ascending: false })
     .limit(50)
 
-  const { data: leadsMap } = await supabaseServiceRole
+  const { data: leadsMap, error: leadsError } = await supabaseServiceRole
     .from('leads')
     .select('id, business_name, owner_name, email, assigned_rep_id')
 
-  const { data: campaignsMap } = await supabaseServiceRole
+  const { data: campaignsMap, error: campaignsError } = await supabaseServiceRole
     .from('campaigns')
     .select('id, name')
+
+  if (enrollmentsError) console.error('Enrollments error:', enrollmentsError)
+  if (leadsError) console.error('Leads error:', leadsError)
+  if (campaignsError) console.error('Campaigns error:', campaignsError)
+  console.log('Enrollments fetched:', enrollmentsRaw?.length, 'Leads:', leadsMap?.length, 'Campaigns:', campaignsMap?.length)
 
   // Hydrate enrollments with lead and campaign data
   const enrollments = (enrollmentsRaw || []).map((e: any) => ({
@@ -50,10 +55,6 @@ export default async function CampaignsPage() {
     lead: leadsMap?.find((l: any) => l.id === e.lead_id),
     campaign: campaignsMap?.find((c: any) => c.id === e.campaign_id),
   }))
-
-  if (enrollmentsError) {
-    console.error('Enrollments query error:', enrollmentsError)
-  }
 
   const { data: emailStats } = await supabase
     .from('email_logs')
