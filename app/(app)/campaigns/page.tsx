@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { CampaignsClient } from '@/components/campaigns/CampaignsClient'
 
 export default async function CampaignsPage() {
@@ -20,14 +21,18 @@ export default async function CampaignsPage() {
     .select('*, steps:campaign_steps(*)')
     .order('name')
 
-  const enrollmentsQuery = supabase
+  // Use service role to bypass RLS and see all campaign enrollments
+  const supabaseServiceRole = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    { auth: { persistSession: false } }
+  )
+  const { data: enrollments } = await supabaseServiceRole
     .from('campaign_enrollments')
     .select('*, lead:leads(id, business_name, owner_name, email, assigned_rep_id), campaign:campaigns(name)')
     .eq('status', 'active')
     .order('enrolled_at', { ascending: false })
     .limit(50)
-
-  const { data: enrollments } = await enrollmentsQuery
 
   const { data: emailStats } = await supabase
     .from('email_logs')

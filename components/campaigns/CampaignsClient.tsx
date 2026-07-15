@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, MessageSquare, Play, Pause, ChevronDown, ChevronRight, Users, BarChart3, Send, Plus, Pencil } from 'lucide-react'
+import { Mail, MessageSquare, Play, Pause, ChevronDown, ChevronRight, Users, BarChart3, Send, Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard, StatCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/Button'
@@ -60,6 +60,10 @@ export function CampaignsClient({
   const [enrollLeadId, setEnrollLeadId] = useState('')
   const [enrollLeadSearch, setEnrollLeadSearch] = useState('')
   const [enrolling, setEnrolling] = useState(false)
+
+  // campaign detail modal
+  const [campaignDetailModal, setCampaignDetailModal] = useState<any | null>(null)
+  const [campaignDetailFilter, setCampaignDetailFilter] = useState<'all' | 'active' | 'paused' | 'completed' | 'unsubscribed'>('all')
 
   // step modal: edit an existing step or add a new one
   const [stepModal, setStepModal] = useState<{ campaign: any; step: any | null } | null>(null)
@@ -241,10 +245,20 @@ export function CampaignsClient({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {activeCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Users size={13} />}
+                        onClick={e => { e.stopPropagation(); setCampaignDetailModal(campaign) }}
+                      >
+                        Manage ({activeCount})
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"
-                      icon={<Users size={13} />}
+                      icon={<Plus size={13} />}
                       onClick={e => { e.stopPropagation(); setEnrollModal(campaign) }}
                     >
                       Enroll
@@ -526,6 +540,92 @@ export function CampaignsClient({
         onClose={() => setCreateCampaignOpen(false)}
         onCreated={handleCampaignCreated}
       />
+
+      {/* ── Campaign detail modal ── */}
+      <Modal
+        open={!!campaignDetailModal}
+        onClose={() => setCampaignDetailModal(null)}
+        title={campaignDetailModal?.name}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Filter tabs */}
+          <div className="flex gap-2 border-b border-white/[0.06]">
+            {(['all', 'active', 'paused', 'completed', 'unsubscribed'] as const).map(status => {
+              const count = campaignDetailModal
+                ? status === 'all'
+                  ? enrollments.filter(e => e.campaign_id === campaignDetailModal.id).length
+                  : enrollments.filter(e => e.campaign_id === campaignDetailModal.id && e.status === status).length
+                : 0
+              return (
+                <button
+                  key={status}
+                  onClick={() => setCampaignDetailFilter(status)}
+                  className={`px-3 py-2 text-xs font-medium capitalize transition-colors border-b-2 ${
+                    campaignDetailFilter === status
+                      ? 'border-purple-500 text-white'
+                      : 'border-transparent text-[var(--text-secondary)] hover:text-white'
+                  }`}
+                >
+                  {status} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Enrollments list */}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {campaignDetailModal && enrollments
+              .filter(e => e.campaign_id === campaignDetailModal.id)
+              .filter(e => campaignDetailFilter === 'all' || e.status === campaignDetailFilter)
+              .map(enrollment => (
+                <div
+                  key={enrollment.id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">
+                      {enrollment.lead?.business_name || 'Unknown'}
+                    </div>
+                    <div className="text-xs text-[var(--text-secondary)] flex gap-2">
+                      <span>{enrollment.lead?.owner_name || 'No owner'}</span>
+                      <span>·</span>
+                      <span>Step {enrollment.current_step}</span>
+                      <span>·</span>
+                      <span>{formatDate(enrollment.enrolled_at)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                    <Badge variant={enrollment.status === 'active' ? 'green' : enrollment.status === 'paused' ? 'amber' : 'gray'}>
+                      {enrollment.status}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={<Trash2 size={13} />}
+                      onClick={() => handleUnenroll(enrollment.id)}
+                      className="text-red-400 hover:text-red-300"
+                      title="Unenroll"
+                    />
+                  </div>
+                </div>
+              ))}
+
+            {campaignDetailModal && enrollments.filter(e => e.campaign_id === campaignDetailModal.id).filter(e => campaignDetailFilter === 'all' || e.status === campaignDetailFilter).length === 0 && (
+              <div className="text-center py-8 text-[var(--text-muted)] text-sm">
+                No enrollments in this status
+              </div>
+            )}
+          </div>
+
+          {/* Close button */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.06]">
+            <Button variant="ghost" onClick={() => setCampaignDetailModal(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
