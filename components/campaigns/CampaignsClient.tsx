@@ -57,7 +57,7 @@ export function CampaignsClient({
 
   // ── Modal state ──────────────────────────────────────────────────────────────
   const [enrollModal, setEnrollModal] = useState<any | null>(null)
-  const [enrollLeadId, setEnrollLeadId] = useState('')
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([])
   const [enrollLeadSearch, setEnrollLeadSearch] = useState('')
   const [enrolling, setEnrolling] = useState(false)
 
@@ -82,40 +82,45 @@ export function CampaignsClient({
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleEnroll = async () => {
-    if (!enrollLeadId || !enrollModal) return
+    if (selectedLeadIds.length === 0 || !enrollModal) return
     setEnrolling(true)
     try {
-      const { data } = await supabase
-        .from('campaign_enrollments')
-        .insert({ lead_id: enrollLeadId, campaign_id: enrollModal.id, current_step: 1, status: 'active' })
-        .select('*, lead:leads(id, business_name, owner_name, email), campaign:campaigns(name)')
-        .single()
-      if (data) {
-        setEnrollments(prev => [data, ...prev])
-        await supabase.from('activity_log').insert({
-          lead_id: enrollLeadId,
-          user_id: currentUserId,
-          action: 'enrolled in campaign',
-          details: enrollModal.name,
-        })
+      let enrolledCount = 0
 
-        // Send the first campaign email/SMS
-        try {
-          const sendRes = await fetch('/api/campaigns/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enrollmentId: data.id }),
+      for (const leadId of selectedLeadIds) {
+        const { data } = await supabase
+          .from('campaign_enrollments')
+          .insert({ lead_id: leadId, campaign_id: enrollModal.id, current_step: 1, status: 'active' })
+          .select('*, lead:leads(id, business_name, owner_name, email), campaign:campaigns(name)')
+          .single()
+
+        if (data) {
+          enrolledCount++
+          setEnrollments(prev => [data, ...prev])
+
+          await supabase.from('activity_log').insert({
+            lead_id: leadId,
+            user_id: currentUserId,
+            action: 'enrolled in campaign',
+            details: enrollModal.name,
           })
-          if (!sendRes.ok) {
-            const err = await sendRes.json()
-            console.error('Failed to send first campaign message:', err)
+
+          // Send the first campaign email/SMS
+          try {
+            await fetch('/api/campaigns/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enrollmentId: data.id }),
+            })
+          } catch (err) {
+            console.error('Error sending first campaign message:', err)
           }
-        } catch (err) {
-          console.error('Error sending first campaign message:', err)
         }
       }
+
       setEnrollModal(null)
-      setEnrollLeadId('')
+      setSelectedLeadIds([])
+      setEnrollLeadSearch('')
     } catch (err) {
       console.error(err)
     } finally {
@@ -430,12 +435,22 @@ export function CampaignsClient({
       )}
 
       {/* ── Enroll modal ── */}
-      <Modal open={!!enrollModal} onClose={() => { setEnrollModal(null); setEnrollLeadSearch(''); setEnrollLeadId('') }} title={`Enroll in: ${enrollModal?.name}`} size="sm">
+      <Modal open={!!enrollModal} onClose={() => { setEnrollModal(null); setEnrollLeadSearch(''); setSelectedLeadIds([]) }} title={`Enroll in: ${enrollModal?.name}`} size="sm">
         <div className="space-y-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Select Lead
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                Select Leads ({selectedLeadIds.length})
+              </label>
+              {selectedLeadIds.length > 0 && (
+                <button
+                  onClick={() => setSelectedLeadIds([])}
+                  className="text-xs text-purple-400 hover:text-purple-300"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
             <input
               type="text"
               placeholder="Search by business name, owner, or email..."
@@ -443,72 +458,67 @@ export function CampaignsClient({
               onChange={e => setEnrollLeadSearch(e.target.value)}
               className="h-9 w-full rounded-xl px-3 text-sm bg-white/[0.04] border border-white/[0.08] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-purple-500/10 transition-all duration-200"
             />
-            {/* Dropdown list */}
-            {!enrollLeadId || enrollLeadSearch ? (
-              <div className="max-h-64 overflow-y-auto rounded-xl bg-white/[0.04] border border-white/[0.08]">
-                {leads
-                  .filter(l => l.business_name && l.owner_name) // Filter out nulls
-                  .filter(l => {
-                    const search = enrollLeadSearch.toLowerCase()
-                    return (
-                      l.business_name?.toLowerCase().includes(search) ||
-                      l.owner_name?.toLowerCase().includes(search) ||
-                      l.email?.toLowerCase().includes(search)
-                    )
-                  })
-                  .slice(0, 20) // Limit to 20 results
-                  .map(l => (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => {
-                        setEnrollLeadId(l.id)
-                        setEnrollLeadSearch('')
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm border-b border-white/[0.06] last:border-b-0 hover:bg-white/[0.08] transition-colors ${
-                        enrollLeadId === l.id ? 'bg-purple-500/20' : ''
-                      }`}
-                    >
-                      <div className="font-medium text-white">{l.business_name}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {l.owner_name} · {l.email || 'no email'}
-                      </div>
-                    </button>
-                  ))}
-                {leads.filter(l => l.business_name && l.owner_name).length === 0 && (
-                  <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                    No valid leads available
-                  </div>
-                )}
-                {enrollLeadSearch && leads.filter(l => l.business_name && l.owner_name).filter(l => {
+            {/* Lead list with checkboxes */}
+            <div className="max-h-64 overflow-y-auto rounded-xl bg-white/[0.04] border border-white/[0.08]">
+              {leads
+                .filter(l => l.business_name && l.owner_name)
+                .filter(l => {
                   const search = enrollLeadSearch.toLowerCase()
                   return (
                     l.business_name?.toLowerCase().includes(search) ||
                     l.owner_name?.toLowerCase().includes(search) ||
                     l.email?.toLowerCase().includes(search)
                   )
-                }).length === 0 && (
-                  <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                    No leads match "{enrollLeadSearch}"
-                  </div>
-                )}
-              </div>
-            ) : null}
-            {enrollLeadId && (
-              <div className="px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-sm">
-                <div className="font-medium text-white">
-                  {leads.find(l => l.id === enrollLeadId)?.business_name}
+                })
+                .slice(0, 50)
+                .map(l => (
+                  <label
+                    key={l.id}
+                    className="flex items-start gap-3 px-3 py-2 border-b border-white/[0.06] last:border-b-0 hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedLeadIds.includes(l.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedLeadIds(prev => [...prev, l.id])
+                        } else {
+                          setSelectedLeadIds(prev => prev.filter(id => id !== l.id))
+                        }
+                      }}
+                      className="mt-0.5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{l.business_name}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {l.owner_name} · {l.email || 'no email'}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              {leads.filter(l => l.business_name && l.owner_name).length === 0 && (
+                <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                  No valid leads available
                 </div>
-                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  {leads.find(l => l.id === enrollLeadId)?.owner_name}
+              )}
+              {enrollLeadSearch && leads.filter(l => l.business_name && l.owner_name).filter(l => {
+                const search = enrollLeadSearch.toLowerCase()
+                return (
+                  l.business_name?.toLowerCase().includes(search) ||
+                  l.owner_name?.toLowerCase().includes(search) ||
+                  l.email?.toLowerCase().includes(search)
+                )
+              }).length === 0 && (
+                <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                  No leads match "{enrollLeadSearch}"
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => { setEnrollModal(null); setEnrollLeadSearch(''); setEnrollLeadId('') }}>Cancel</Button>
-            <Button variant="primary" loading={enrolling} onClick={handleEnroll} disabled={!enrollLeadId}>
-              Enroll Lead
+            <Button variant="ghost" onClick={() => { setEnrollModal(null); setEnrollLeadSearch(''); setSelectedLeadIds([]) }}>Cancel</Button>
+            <Button variant="primary" loading={enrolling} onClick={handleEnroll} disabled={selectedLeadIds.length === 0}>
+              Enroll {selectedLeadIds.length > 0 ? `(${selectedLeadIds.length})` : 'Leads'}
             </Button>
           </div>
         </div>
