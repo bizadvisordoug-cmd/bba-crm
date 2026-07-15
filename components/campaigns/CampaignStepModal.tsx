@@ -538,40 +538,40 @@ export function CampaignStepModal({
       const { error: err } = await supabase.from('campaign_steps').delete().eq('id', step!.id)
       if (err) throw err
 
-      // Renumber remaining steps with higher step_number
-      const { data: stepsToRenumber, error: fetchErr } = await supabase
+      // Get all remaining steps and renumber them to be sequential
+      const { data: allRemainingSteps, error: fetchErr } = await supabase
         .from('campaign_steps')
         .select('id, step_number')
         .eq('campaign_id', campaignId)
-        .gt('step_number', deletedStepNumber)
         .order('step_number', { ascending: true })
 
       if (fetchErr) throw fetchErr
 
-      // Update each step's number down by 1
-      for (const s of stepsToRenumber || []) {
+      // Create a mapping of old step_number → new step_number
+      const stepNumberMap: Record<number, number> = {}
+      ;(allRemainingSteps || []).forEach((step: any, index: number) => {
+        const newNumber = index + 1
+        if (step.step_number !== newNumber) {
+          stepNumberMap[step.step_number] = newNumber
+        }
+      })
+
+      // Update steps with new sequential numbers
+      for (const [oldNum, newNum] of Object.entries(stepNumberMap)) {
         await supabase
           .from('campaign_steps')
-          .update({ step_number: s.step_number - 1 })
-          .eq('id', s.id)
+          .update({ step_number: newNum })
+          .eq('campaign_id', campaignId)
+          .eq('step_number', parseInt(oldNum))
       }
 
-      // Update enrollments that reference the renumbered steps
-      if ((stepsToRenumber || []).length > 0) {
-        const { data: enrollments, error: enrollErr } = await supabase
+      // Update enrollments to use new step numbers
+      for (const [oldNum, newNum] of Object.entries(stepNumberMap)) {
+        await supabase
           .from('campaign_enrollments')
-          .select('id, current_step')
+          .update({ current_step: newNum })
           .eq('campaign_id', campaignId)
-          .gt('current_step', deletedStepNumber)
-
-        if (enrollErr) throw enrollErr
-
-        for (const e of enrollments || []) {
-          await supabase
-            .from('campaign_enrollments')
-            .update({ current_step: e.current_step - 1 })
-            .eq('id', e.id)
-        }
+          .eq('current_step', parseInt(oldNum))
       }
 
       onDelete?.(step!.id)
