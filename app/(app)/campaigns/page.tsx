@@ -27,12 +27,16 @@ export default async function CampaignsPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     { auth: { persistSession: false } }
   )
-  const { data: enrollments } = await supabaseServiceRole
+  const { data: enrollments, error: enrollmentsError } = await supabaseServiceRole
     .from('campaign_enrollments')
     .select('*, lead:leads(id, business_name, owner_name, email, assigned_rep_id), campaign:campaigns(name)')
     .eq('status', 'active')
     .order('enrolled_at', { ascending: false })
     .limit(50)
+
+  if (enrollmentsError) {
+    console.error('Enrollments query error:', enrollmentsError)
+  }
 
   const { data: emailStats } = await supabase
     .from('email_logs')
