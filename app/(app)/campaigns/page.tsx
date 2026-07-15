@@ -47,14 +47,22 @@ export default async function CampaignsPage() {
   if (enrollmentsError) console.error('Enrollments error:', enrollmentsError)
   if (leadsError) console.error('Leads error:', leadsError)
   if (campaignsError) console.error('Campaigns error:', campaignsError)
-  console.log('Enrollments fetched:', enrollmentsRaw?.length, 'Leads:', leadsMap?.length, 'Campaigns:', campaignsMap?.length)
+
+  console.log('Raw enrollments:', enrollmentsRaw)
+  console.log('Leads map:', leadsMap)
 
   // Hydrate enrollments with lead and campaign data
-  const enrollments = (enrollmentsRaw || []).map((e: any) => ({
-    ...e,
-    lead: leadsMap?.find((l: any) => l.id === e.lead_id),
-    campaign: campaignsMap?.find((c: any) => c.id === e.campaign_id),
-  }))
+  const enrollments = (enrollmentsRaw || []).map((e: any) => {
+    const lead = leadsMap?.find((l: any) => l.id === e.lead_id)
+    if (!lead) {
+      console.warn('Lead not found for enrollment:', e.lead_id, 'in enrollments:', e.id)
+    }
+    return {
+      ...e,
+      lead,
+      campaign: campaignsMap?.find((c: any) => c.id === e.campaign_id),
+    }
+  })
 
   const { data: emailStats } = await supabase
     .from('email_logs')
