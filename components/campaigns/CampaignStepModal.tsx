@@ -542,7 +542,7 @@ export function CampaignStepModal({
       const { data: stepsToRenumber, error: fetchErr } = await supabase
         .from('campaign_steps')
         .select('id, step_number')
-        .eq('campaign_id', campaign_id)
+        .eq('campaign_id', campaignId)
         .gt('step_number', deletedStepNumber)
         .order('step_number', { ascending: true })
 
@@ -561,7 +561,7 @@ export function CampaignStepModal({
         const { data: enrollments, error: enrollErr } = await supabase
           .from('campaign_enrollments')
           .select('id, current_step')
-          .eq('campaign_id', campaign_id)
+          .eq('campaign_id', campaignId)
           .gt('current_step', deletedStepNumber)
 
         if (enrollErr) throw enrollErr
