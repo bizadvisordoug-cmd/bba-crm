@@ -606,7 +606,9 @@ export function CampaignsClient({
                       onClick={() => handleUnenroll(enrollment.id)}
                       className="text-red-400 hover:text-red-300"
                       title="Unenroll"
-                    />
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </div>
               ))}
