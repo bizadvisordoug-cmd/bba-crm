@@ -209,13 +209,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Advance enrollment
-    const nextStepNumber = enrollment.current_step + 1
-    const hasNextStep = steps.some((s: any) => s.step_number === nextStepNumber)
+    // Advance enrollment to next available step
+    const nextAvailableStep = steps.find((s: any) => s.step_number > enrollment.current_step)
+    const nextStepNumber = nextAvailableStep?.step_number || enrollment.current_step
 
     await supabase
       .from('campaign_enrollments')
-      .update({ current_step: nextStepNumber, status: hasNextStep ? 'active' : 'completed' })
+      .update({
+        current_step: nextStepNumber,
+        status: nextAvailableStep ? 'active' : 'completed'
+      })
       .eq('id', enrollmentId)
 
     await supabase.from('activity_log').insert({
