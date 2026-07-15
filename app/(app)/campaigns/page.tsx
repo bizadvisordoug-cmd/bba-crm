@@ -27,12 +27,29 @@ export default async function CampaignsPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     { auth: { persistSession: false } }
   )
-  const { data: enrollments, error: enrollmentsError } = await supabaseServiceRole
+
+  // Fetch enrollments and leads separately to avoid join issues
+  const { data: enrollmentsRaw, error: enrollmentsError } = await supabaseServiceRole
     .from('campaign_enrollments')
-    .select('*, lead:leads(id, business_name, owner_name, email, assigned_rep_id), campaign:campaigns(name)')
+    .select('*')
     .eq('status', 'active')
     .order('enrolled_at', { ascending: false })
     .limit(50)
+
+  const { data: leadsMap } = await supabaseServiceRole
+    .from('leads')
+    .select('id, business_name, owner_name, email, assigned_rep_id')
+
+  const { data: campaignsMap } = await supabaseServiceRole
+    .from('campaigns')
+    .select('id, name')
+
+  // Hydrate enrollments with lead and campaign data
+  const enrollments = (enrollmentsRaw || []).map((e: any) => ({
+    ...e,
+    lead: leadsMap?.find((l: any) => l.id === e.lead_id),
+    campaign: campaignsMap?.find((c: any) => c.id === e.campaign_id),
+  }))
 
   if (enrollmentsError) {
     console.error('Enrollments query error:', enrollmentsError)
