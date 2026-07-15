@@ -79,6 +79,9 @@ export function POSSystemsPanel() {
     setError('')
     setSuccess('')
 
+    // Update local state immediately to avoid losing focus
+    setSystems(systems.map(s => s.id === id ? { ...s, ...updates } : s))
+
     try {
       const { error: err } = await supabase
         .from('pos_systems')
@@ -86,12 +89,12 @@ export function POSSystemsPanel() {
         .eq('id', id)
 
       if (err) throw err
-
       clearPOSSystemsCache()
-      await loadSystems()
       setSuccess('POS system updated')
     } catch (err) {
+      // Reload on error to sync state
       setError(err instanceof Error ? err.message : 'Failed to update POS system')
+      await loadSystems()
     }
   }
 
