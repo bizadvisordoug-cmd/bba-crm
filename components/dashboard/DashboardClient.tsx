@@ -27,5 +27,16 @@ export function DashboardClient({
   commissionAlerts,
   repRecentCommissions,
 }: DashboardClientProps) {
-  return <div>Dashboard works</div>
+  const greeting = () => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
+
+  return (
+    <div>
+      <h1>{greeting()}, Test 👋</h1>
+    </div>
+  )
 }
