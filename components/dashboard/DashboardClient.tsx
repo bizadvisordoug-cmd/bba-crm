@@ -18,6 +18,9 @@ export function DashboardClient({
   profile,
   pipelineByStage,
   tasksDueToday,
+  tasksDueThisWeek,
+  renewals,
+  activity,
 }: DashboardClientProps) {
   return <div>Dashboard works</div>
 }
