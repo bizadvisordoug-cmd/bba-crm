@@ -38,7 +38,7 @@ export function DashboardClient({
     <div>
       <div>
         <h1>
-          {greeting()}, {profile?.name?.split(' ')[0]} 👋
+          {greeting()}, Test 👋
         </h1>
         <p>
           Here&apos;s what&apos;s happening with your pipeline today.
