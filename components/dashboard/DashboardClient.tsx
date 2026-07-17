@@ -114,10 +114,8 @@ export function DashboardClient({
                 </div>
                 <h2 className="font-semibold text-white">My Commissions</h2>
               </div>
-              <Link href="/my-commissions">
-                <span className="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors cursor-pointer">
-                  View all →
-                </span>
+              <Link href="/my-commissions" className="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors cursor-pointer">
+                View all →
               </Link>
             </div>
             <div className="space-y-2">
