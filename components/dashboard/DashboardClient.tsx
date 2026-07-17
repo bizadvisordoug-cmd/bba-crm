@@ -10,56 +10,10 @@ interface DashboardClientProps {
   totalLeads: number
   activeClients: number
   campaignStats: { emailsSent: number; openRate: number; replyRate: number }
-  commissionAlerts?: {
-    isPaymentEntryTime: boolean
-    overdueRecords: any[]
-    dismissedNotifs: any[]
-    currentUserId: string
-    currentYear: number
-    currentMonth: number
-  }
-  repRecentCommissions?: Array<{
-    id: string
-    year: number
-    month: number
-    status: string
-    total_owed: number
-    total_paid: number
-    paid_date?: string | null
-  }>
+  commissionAlerts?: any
+  repRecentCommissions?: any
 }
 
-export function DashboardClient({
-  profile,
-  pipelineByStage,
-  tasksDueToday,
-  tasksDueThisWeek,
-  renewals,
-  activity,
-  totalLeads,
-  activeClients,
-  campaignStats,
-  commissionAlerts,
-  repRecentCommissions,
-}: DashboardClientProps) {
-  const greeting = () => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
-  return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">
-          {greeting()}, {profile?.name?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Here&apos;s what&apos;s happening with your pipeline today.
-        </p>
-      </div>
-    </div>
-  )
+export function DashboardClient(props: DashboardClientProps) {
+  return <div>Dashboard Test</div>
 }
