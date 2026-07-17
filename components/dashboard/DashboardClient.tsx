@@ -27,11 +27,9 @@ export function DashboardClient({
   commissionAlerts,
   repRecentCommissions,
 }: DashboardClientProps) {
-  const greeting = "Good morning"
-
   return (
     <div>
-      <h1>{greeting}, Test 👋</h1>
+      <h1>{new Date().getHours() < 12 ? 'Good morning' : 'Good afternoon'}, Test 👋</h1>
     </div>
   )
 }
