@@ -14,6 +14,13 @@ interface DashboardClientProps {
   repRecentCommissions?: any
 }
 
+const getGreeting = () => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export function DashboardClient({
   profile,
   pipelineByStage,
@@ -27,16 +34,9 @@ export function DashboardClient({
   commissionAlerts,
   repRecentCommissions,
 }: DashboardClientProps) {
-  const greeting = () => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
   return (
     <div>
-      <h1>Good morning, Test 👋</h1>
+      <h1>{getGreeting()}, Test 👋</h1>
     </div>
   )
 }
