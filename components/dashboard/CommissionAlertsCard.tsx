@@ -98,10 +98,8 @@ export function CommissionAlertsCard({
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <Link href="/crm/commissions">
-                  <span className="text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors cursor-pointer whitespace-nowrap">
-                    Enter now →
-                  </span>
+                <Link href="/crm/commissions" className="text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors cursor-pointer whitespace-nowrap">
+                  Enter now →
                 </Link>
                 <button
                   onClick={() => dismiss('commission_entry', currentYear, currentMonth)}
