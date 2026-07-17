@@ -117,29 +117,33 @@ export default async function DashboardPage() {
   const tasksDueThisWeek = (tasks || []).filter(t => new Date(t.due_date) > endOfDay)
 
   return (
-    <DashboardClient
-      profile={profile}
-      pipelineByStage={pipelineByStage}
-      tasksDueToday={tasksDueToday}
-      tasksDueThisWeek={tasksDueThisWeek}
-      renewals={renewals || []}
-      activity={activity || []}
-      totalLeads={leads?.length || 0}
-      activeClients={leads?.filter(l => l.status === 'Active Client').length || 0}
-      campaignStats={{
-        emailsSent: emailsSent || 0,
-        openRate: emailsSent ? Math.round(((emailsOpened || 0) / emailsSent) * 100) : 0,
-        replyRate: emailsSent ? Math.round(((emailsReplied || 0) / emailsSent) * 100) : 0,
-      }}
-      commissionAlerts={isAdmin ? {
-        isPaymentEntryTime: alertDay >= 26,
-        overdueRecords: overdueCommissions,
-        dismissedNotifs,
-        currentUserId: user!.id,
-        currentYear: alertYear,
-        currentMonth: alertMonth,
-      } : undefined}
-      repRecentCommissions={!isAdmin ? repRecentCommissions : undefined}
-    />
+    <div style={{ padding: '2rem', color: 'white' }}>
+      <h1>Dashboard</h1>
+      <p>Debugging React error #418 - Dashboard temporarily disabled</p>
+      {/* <DashboardClient
+        profile={profile}
+        pipelineByStage={pipelineByStage}
+        tasksDueToday={tasksDueToday}
+        tasksDueThisWeek={tasksDueThisWeek}
+        renewals={renewals || []}
+        activity={activity || []}
+        totalLeads={leads?.length || 0}
+        activeClients={leads?.filter(l => l.status === 'Active Client').length || 0}
+        campaignStats={{
+          emailsSent: emailsSent || 0,
+          openRate: emailsSent ? Math.round(((emailsOpened || 0) / emailsSent) * 100) : 0,
+          replyRate: emailsSent ? Math.round(((emailsReplied || 0) / emailsSent) * 100) : 0,
+        }}
+        commissionAlerts={isAdmin ? {
+          isPaymentEntryTime: alertDay >= 26,
+          overdueRecords: overdueCommissions,
+          dismissedNotifs,
+          currentUserId: user!.id,
+          currentYear: alertYear,
+          currentMonth: alertMonth,
+        } : undefined}
+        repRecentCommissions={!isAdmin ? repRecentCommissions : undefined}
+      /> */}
+    </div>
   )
 }
