@@ -40,7 +40,7 @@ export function DashboardClient({
         <h1 className="text-2xl font-bold text-white">
           {greeting()}, {profile?.name?.split(' ')[0]} 👋
         </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm mt-1">
           Here&apos;s what&apos;s happening with your pipeline today.
         </p>
       </div>
