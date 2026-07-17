@@ -16,6 +16,7 @@ interface DashboardClientProps {
 
 export function DashboardClient({
   profile,
+  pipelineByStage,
 }: DashboardClientProps) {
   return <div>Dashboard works</div>
 }
