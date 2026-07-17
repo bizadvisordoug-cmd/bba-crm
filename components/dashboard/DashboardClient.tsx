@@ -100,8 +100,8 @@ export function DashboardClient({
         </Link>
       </motion.div>
 
-      {/* Commission alerts (admin only) */}
-      {commissionAlerts && <CommissionAlertsCard {...commissionAlerts} />}
+      {/* Commission alerts (admin only) - TEMPORARILY DISABLED due to React ref error */}
+      {/* {commissionAlerts && <CommissionAlertsCard {...commissionAlerts} />} */}
 
       {/* Rep commission card */}
       {repRecentCommissions && repRecentCommissions.length > 0 && (
