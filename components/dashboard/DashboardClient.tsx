@@ -66,19 +66,14 @@ export function DashboardClient({
   return (
     <div>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="mb-8"
-      >
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">
           {greeting()}, {profile?.name?.split(' ')[0]} 👋
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
           Here&apos;s what&apos;s happening with your pipeline today.
         </p>
-      </motion.div>
+      </div>
     </div>
   )
 }
