@@ -14,36 +14,6 @@ interface DashboardClientProps {
   repRecentCommissions?: any
 }
 
-export function DashboardClient({
-  profile,
-  pipelineByStage,
-  tasksDueToday,
-  tasksDueThisWeek,
-  renewals,
-  activity,
-  totalLeads,
-  activeClients,
-  campaignStats,
-  commissionAlerts,
-  repRecentCommissions,
-}: DashboardClientProps) {
-  const greeting = () => {
-    const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
-  return (
-    <div>
-      <div>
-        <h1>
-          {greeting()}, Test 👋
-        </h1>
-        <p>
-          Here&apos;s what&apos;s happening with your pipeline today.
-        </p>
-      </div>
-    </div>
-  )
+export function DashboardClient(props: DashboardClientProps) {
+  return <div>Dashboard works</div>
 }
