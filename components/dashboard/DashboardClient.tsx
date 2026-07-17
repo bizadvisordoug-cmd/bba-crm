@@ -21,6 +21,11 @@ export function DashboardClient({
   tasksDueThisWeek,
   renewals,
   activity,
+  totalLeads,
+  activeClients,
+  campaignStats,
+  commissionAlerts,
+  repRecentCommissions,
 }: DashboardClientProps) {
   return <div>Dashboard works</div>
 }
