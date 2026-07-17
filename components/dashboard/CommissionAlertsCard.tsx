@@ -160,10 +160,8 @@ export function CommissionAlertsCard({
         </div>
 
         <div className="mt-4 pt-3 border-t border-white/[0.06] flex justify-end">
-          <Link href="/crm/commissions">
-            <span className="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors cursor-pointer">
-              View all commissions →
-            </span>
+          <Link href="/crm/commissions" className="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors cursor-pointer">
+            View all commissions →
           </Link>
         </div>
       </GlassCard>
