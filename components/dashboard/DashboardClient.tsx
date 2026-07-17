@@ -36,7 +36,7 @@ export function DashboardClient({
 
   return (
     <div>
-      <h1>{greeting()}, Test 👋</h1>
+      <h1>Good morning, Test 👋</h1>
     </div>
   )
 }
