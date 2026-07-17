@@ -36,11 +36,11 @@ export function DashboardClient({
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">
+      <div>
+        <h1>
           {greeting()}, {profile?.name?.split(' ')[0]} 👋
         </h1>
-        <p className="text-sm mt-1">
+        <p>
           Here&apos;s what&apos;s happening with your pipeline today.
         </p>
       </div>
