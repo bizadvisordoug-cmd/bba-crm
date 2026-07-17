@@ -14,6 +14,8 @@ interface DashboardClientProps {
   repRecentCommissions?: any
 }
 
-export function DashboardClient(props: DashboardClientProps) {
+export function DashboardClient({
+  profile,
+}: DashboardClientProps) {
   return <div>Dashboard works</div>
 }
