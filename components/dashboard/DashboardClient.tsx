@@ -56,6 +56,15 @@ export function DashboardClient({
   commissionAlerts,
   repRecentCommissions,
 }: DashboardClientProps) {
+  // DEBUGGING: Return minimal component to find ref error source
+  return (
+    <div style={{ padding: '2rem', color: 'white' }}>
+      <h1>Dashboard (Debugging)</h1>
+      <p>Testing DashboardClient imports...</p>
+    </div>
+  );
+
+  /*
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
   const fmt$ = (n: number) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const greeting = () => {
@@ -347,4 +356,5 @@ export function DashboardClient({
       </GlassCard>
     </div>
   )
+  */
 }

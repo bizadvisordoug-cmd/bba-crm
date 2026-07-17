@@ -117,10 +117,7 @@ export default async function DashboardPage() {
   const tasksDueThisWeek = (tasks || []).filter(t => new Date(t.due_date) > endOfDay)
 
   return (
-    <div style={{ padding: '2rem', color: 'white' }}>
-      <h1>Dashboard</h1>
-      <p>Debugging React error #418 - Dashboard temporarily disabled</p>
-      {/* <DashboardClient
+    <DashboardClient
         profile={profile}
         pipelineByStage={pipelineByStage}
         tasksDueToday={tasksDueToday}
@@ -143,7 +140,6 @@ export default async function DashboardPage() {
           currentMonth: alertMonth,
         } : undefined}
         repRecentCommissions={!isAdmin ? repRecentCommissions : undefined}
-      /> */}
-    </div>
+      />
   )
 }
