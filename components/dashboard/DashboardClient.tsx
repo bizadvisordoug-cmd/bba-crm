@@ -1,5 +1,3 @@
-'use client'
-
 interface DashboardClientProps {
   profile: { name: string; role: string } | null
   pipelineByStage: Record<string, number>
