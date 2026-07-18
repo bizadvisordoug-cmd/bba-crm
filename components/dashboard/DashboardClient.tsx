@@ -67,11 +67,9 @@ export function DashboardClient({
         <div className="rounded-lg border p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg">Tasks Due Today</h2>
-            {tasksDueToday.length > 0 && (
-              <a href="/tasks" className="text-sm text-blue-600 hover:text-blue-800">
-                View all
-              </a>
-            )}
+            <a href="/tasks" className="text-sm text-blue-600 hover:text-blue-800">
+              View all
+            </a>
           </div>
           <div className="space-y-2">
             {tasksDueToday.length === 0 ? (
@@ -127,7 +125,7 @@ export function DashboardClient({
         </div>
       </div>
 
-      {tasksDueThisWeek.length > 0 && (
+      {tasksDueThisWeek && tasksDueThisWeek.length > 0 && (
         <div className="rounded-lg border p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg">Tasks Due This Week</h2>
