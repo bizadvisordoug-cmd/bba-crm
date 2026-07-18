@@ -70,7 +70,7 @@ export function DashboardClient({
             {tasksDueToday.length === 0 ? (
               <p className="text-slate-500 text-sm">No tasks due today</p>
             ) : (
-              tasksDueToday.slice(0, 5).map((task) => (
+              tasksDueToday.slice(0, 5).map((task: any) => (
                 <div key={task.id} className="border-b pb-2 last:border-b-0">
                   <p className="font-medium text-sm">{task.lead?.business_name || 'Task'}</p>
                   <p className="text-xs text-slate-600">{task.title}</p>
@@ -86,7 +86,7 @@ export function DashboardClient({
             {renewals.length === 0 ? (
               <p className="text-slate-500 text-sm">No upcoming renewals</p>
             ) : (
-              renewals.slice(0, 5).map((renewal) => (
+              renewals.slice(0, 5).map((renewal: any) => (
                 <div key={renewal.id} className="border-b pb-2 last:border-b-0">
                   <p className="font-medium text-sm">{renewal.business_name}</p>
                   <p className="text-xs text-slate-600">{renewal.contract_expiration}</p>
@@ -102,7 +102,7 @@ export function DashboardClient({
             {Object.entries(pipelineByStage).length === 0 ? (
               <p className="text-slate-500 text-sm">No pipeline data</p>
             ) : (
-              Object.entries(pipelineByStage).map(([stage, count]) => (
+              Object.entries(pipelineByStage).map(([stage, count]: [string, number]) => (
                 <div key={stage} className="flex justify-between items-center text-sm">
                   <span className="capitalize">{stage}</span>
                   <span className="font-medium">{count}</span>
@@ -117,7 +117,7 @@ export function DashboardClient({
         <div className="rounded-lg border p-4">
           <h2 className="font-bold text-lg mb-4">Tasks Due This Week</h2>
           <div className="space-y-2">
-            {tasksDueThisWeek.slice(0, 10).map((task) => (
+            {tasksDueThisWeek.slice(0, 10).map((task: any) => (
               <div key={task.id} className="flex justify-between items-start border-b pb-2 last:border-b-0">
                 <div>
                   <p className="font-medium text-sm">{task.lead?.business_name || 'Task'}</p>
@@ -134,7 +134,7 @@ export function DashboardClient({
         <div className="rounded-lg border p-4">
           <h2 className="font-bold text-lg mb-4">Recent Activity</h2>
           <div className="space-y-2">
-            {activity.slice(0, 10).map((entry) => (
+            {activity.slice(0, 10).map((entry: any) => (
               <div key={entry.id} className="text-sm border-b pb-2 last:border-b-0">
                 <p className="font-medium">{entry.user?.name} - {entry.action}</p>
                 <p className="text-xs text-slate-600">{entry.lead?.business_name}</p>
@@ -152,7 +152,7 @@ export function DashboardClient({
             <p className="text-slate-600 text-sm">No overdue commission records</p>
           ) : (
             <div className="space-y-2">
-              {commissionAlerts.overdueRecords.slice(0, 5).map((record) => (
+              {commissionAlerts.overdueRecords.slice(0, 5).map((record: any) => (
                 <div key={record.id} className="text-sm border-b pb-2 last:border-b-0">
                   <p className="font-medium">{record.rep?.name}</p>
                   <p className="text-slate-600">
@@ -169,7 +169,7 @@ export function DashboardClient({
         <div className="rounded-lg border p-4">
           <h2 className="font-bold text-lg mb-4">Recent Commissions</h2>
           <div className="space-y-2">
-            {repRecentCommissions.map((record) => (
+            {repRecentCommissions.map((record: any) => (
               <div key={record.id} className="text-sm border-b pb-2 last:border-b-0">
                 <p className="font-medium">
                   {record.month}/{record.year}
