@@ -1,3 +1,8 @@
+'use client'
+
+import { useState } from 'react'
+import { CreateTaskModal } from './CreateTaskModal'
+
 interface Task {
   id: string
   lead_id: string
@@ -36,17 +41,44 @@ export function TasksClient({
   currentUserId,
   isAdmin,
 }: TasksClientProps) {
-  const incompleteTasks = tasks.filter((t: any) => !t.completed)
-  const completedTasks = tasks.filter((t: any) => t.completed)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [allTasks, setAllTasks] = useState(tasks)
+
+  const openModal = () => setIsModalOpen(true)
+  const closeModal = () => setIsModalOpen(false)
+
+  const handleTaskCreated = () => {
+    setAllTasks(tasks)
+    window.location.reload()
+  }
+
+  const incompleteTasks = allTasks.filter((t: any) => !t.completed)
+  const completedTasks = allTasks.filter((t: any) => t.completed)
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold">Tasks</h1>
-        <p className="text-slate-600 mt-2">
-          Manage your tasks and follow-ups
-        </p>
-      </div>
+    <>
+      <CreateTaskModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        leads={leads}
+        users={users}
+        onTaskCreated={handleTaskCreated}
+      />
+      <div className="space-y-6 p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Tasks</h1>
+            <p className="text-slate-600 mt-2">
+              Manage your tasks and follow-ups
+            </p>
+          </div>
+          <button
+            onClick={openModal}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            + New Task
+          </button>
+        </div>
 
       <div className="space-y-6">
         <div>

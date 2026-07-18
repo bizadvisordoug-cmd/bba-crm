@@ -16,6 +16,7 @@ import {
   Zap,
   ChevronRight,
   DollarSign,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/Avatar'
@@ -27,6 +28,7 @@ const BASE_NAV = [
   { href: '/crm', label: 'CRM', icon: Users },
   { href: '/people', label: 'People', icon: BookUser },
   { href: '/kanban', label: 'Pipeline', icon: Columns3 },
+  { href: '/tasks', label: 'My Tasks', icon: CheckCircle2 },
   { href: '/campaigns', label: 'Campaigns', icon: Mail },
 ]
 const ADMIN_NAV = [{ href: '/crm/commissions', label: 'Commissions', icon: DollarSign }]
