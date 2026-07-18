@@ -1,3 +1,5 @@
+'use client'
+
 interface DashboardClientProps {
   profile: { name: string; role: string } | null
   pipelineByStage: Record<string, number>
@@ -25,9 +27,11 @@ export function DashboardClient({
   commissionAlerts,
   repRecentCommissions,
 }: DashboardClientProps) {
+  const greeting = "Good morning"
+
   return (
     <div>
-      <h1>{new Date().getHours() < 12 ? 'Good morning' : 'Good afternoon'}, Test 👋</h1>
+      <h1>{greeting}, Test 👋</h1>
     </div>
   )
 }
