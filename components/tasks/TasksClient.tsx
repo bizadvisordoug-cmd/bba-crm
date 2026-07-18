@@ -1,0 +1,156 @@
+interface Task {
+  id: string
+  lead_id: string
+  assigned_to: string
+  title: string
+  type: string
+  due_date: string
+  completed: boolean
+  created_at: string
+  lead?: { id: string; business_name: string }
+  assigned_to_user?: { id: string; name: string }
+}
+
+interface Lead {
+  id: string
+  business_name: string
+}
+
+interface User {
+  id: string
+  name: string
+}
+
+interface TasksClientProps {
+  tasks: Task[]
+  leads: Lead[]
+  users: User[]
+  currentUserId: string
+  isAdmin: boolean
+}
+
+export function TasksClient({
+  tasks,
+  leads,
+  users,
+  currentUserId,
+  isAdmin,
+}: TasksClientProps) {
+  const incompleteTasks = tasks.filter((t: any) => !t.completed)
+  const completedTasks = tasks.filter((t: any) => t.completed)
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold">Tasks</h1>
+        <p className="text-slate-600 mt-2">
+          Manage your tasks and follow-ups
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Active Tasks ({incompleteTasks.length})</h2>
+          {incompleteTasks.length === 0 ? (
+            <div className="rounded-lg border p-4 text-center text-slate-500">
+              No active tasks
+            </div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="text-left p-4 font-semibold">Lead</th>
+                      <th className="text-left p-4 font-semibold">Title</th>
+                      <th className="text-left p-4 font-semibold">Type</th>
+                      <th className="text-left p-4 font-semibold">Due Date</th>
+                      <th className="text-left p-4 font-semibold">Assigned To</th>
+                      <th className="text-left p-4 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incompleteTasks.map((task: any) => {
+                      const dueDateObj = new Date(task.due_date)
+                      const dueDateStr = dueDateObj.toLocaleDateString()
+                      const isOverdue = dueDateObj < new Date() && !task.completed
+                      const isToday = dueDateObj.toDateString() === new Date().toDateString()
+
+                      return (
+                        <tr key={task.id} className="border-b hover:bg-slate-50">
+                          <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
+                          <td className="p-4 text-sm font-medium">{task.title}</td>
+                          <td className="p-4 text-sm">{task.type}</td>
+                          <td className={`p-4 text-sm ${isOverdue ? 'text-red-600 font-semibold' : isToday ? 'text-orange-600 font-semibold' : ''}`}>
+                            {dueDateStr}
+                          </td>
+                          <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
+                          <td className="p-4 text-sm">
+                            <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">
+                              Complete
+                            </button>
+                            <button className="text-slate-600 hover:text-slate-800 text-xs mr-2">
+                              Edit
+                            </button>
+                            <button className="text-red-600 hover:text-red-800 text-xs">
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {completedTasks.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Completed Tasks ({completedTasks.length})</h2>
+            <div className="rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="text-left p-4 font-semibold">Lead</th>
+                      <th className="text-left p-4 font-semibold">Title</th>
+                      <th className="text-left p-4 font-semibold">Type</th>
+                      <th className="text-left p-4 font-semibold">Due Date</th>
+                      <th className="text-left p-4 font-semibold">Assigned To</th>
+                      <th className="text-left p-4 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {completedTasks.map((task: any) => {
+                      const dueDateStr = new Date(task.due_date).toLocaleDateString()
+
+                      return (
+                        <tr key={task.id} className="border-b hover:bg-slate-50 opacity-60">
+                          <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
+                          <td className="p-4 text-sm line-through">{task.title}</td>
+                          <td className="p-4 text-sm">{task.type}</td>
+                          <td className="p-4 text-sm">{dueDateStr}</td>
+                          <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
+                          <td className="p-4 text-sm">
+                            <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">
+                              Reopen
+                            </button>
+                            <button className="text-red-600 hover:text-red-800 text-xs">
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
