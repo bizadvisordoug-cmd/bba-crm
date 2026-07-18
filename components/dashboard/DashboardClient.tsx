@@ -43,23 +43,23 @@ export function DashboardClient({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-600">Total Leads</p>
-          <p className="text-2xl font-bold">{totalLeads}</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-white mb-2">Total Leads</p>
+          <p className="text-3xl font-bold">{totalLeads}</p>
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-600">Active Clients</p>
-          <p className="text-2xl font-bold">{activeClients}</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-white mb-2">Active Clients</p>
+          <p className="text-3xl font-bold">{activeClients}</p>
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-600">Tasks Due Today</p>
-          <p className="text-2xl font-bold">{tasksDueToday.length}</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-white mb-2">Tasks Due Today</p>
+          <p className="text-3xl font-bold">{tasksDueToday.length}</p>
         </div>
 
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-600">Email Open Rate</p>
-          <p className="text-2xl font-bold">{campaignStats.openRate}%</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-white mb-2">Email Open Rate</p>
+          <p className="text-3xl font-bold">{campaignStats.openRate}%</p>
         </div>
       </div>
 
