@@ -71,15 +71,15 @@ export function CreateTaskModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold mb-4">Create New Task</h2>
+        <h2 className="text-xl font-bold mb-4 text-slate-900">Create New Task</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Lead</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">Lead</label>
             <select
               name="lead_id"
               required
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white"
             >
               <option value="">Select a lead...</option>
               {leads.map((lead) => (
@@ -91,22 +91,22 @@ export function CreateTaskModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">Title</label>
             <input
               type="text"
               name="title"
               required
               placeholder="Task title"
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white placeholder-slate-400"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Type</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">Type</label>
             <select
               name="type"
               required
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white"
               defaultValue="Follow Up"
             >
               <option>Call</option>
@@ -118,21 +118,21 @@ export function CreateTaskModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Due Date</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">Due Date</label>
             <input
               type="datetime-local"
               name="due_date"
               required
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Assign To</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">Assign To</label>
             <select
               name="assigned_to"
               required
-              className="w-full border rounded-lg p-2 text-sm"
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white"
             >
               <option value="">Select a person...</option>
               {users.map((user) => (
@@ -149,7 +149,7 @@ export function CreateTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+              className="px-4 py-2 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
             >
               Cancel
             </button>
