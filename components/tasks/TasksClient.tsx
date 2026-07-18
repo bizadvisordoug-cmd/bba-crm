@@ -115,7 +115,7 @@ export function TasksClient({
           </button>
         </div>
 
-      <div className="space-y-6">
+        <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold mb-4">Active Tasks ({incompleteTasks.length})</h2>
           {incompleteTasks.length === 0 ? (
