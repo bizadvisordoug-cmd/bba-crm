@@ -65,7 +65,14 @@ export function DashboardClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="rounded-lg border p-4">
-          <h2 className="font-bold text-lg mb-4">Tasks Due Today</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">Tasks Due Today</h2>
+            {tasksDueToday.length > 0 && (
+              <a href="/tasks" className="text-sm text-blue-600 hover:text-blue-800">
+                View all
+              </a>
+            )}
+          </div>
           <div className="space-y-2">
             {tasksDueToday.length === 0 ? (
               <p className="text-slate-500 text-sm">No tasks due today</p>
@@ -81,7 +88,14 @@ export function DashboardClient({
         </div>
 
         <div className="rounded-lg border p-4">
-          <h2 className="font-bold text-lg mb-4">Upcoming Renewals</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">Upcoming Renewals</h2>
+            {renewals.length > 0 && (
+              <a href="/renewals" className="text-sm text-blue-600 hover:text-blue-800">
+                View all
+              </a>
+            )}
+          </div>
           <div className="space-y-2">
             {renewals.length === 0 ? (
               <p className="text-slate-500 text-sm">No upcoming renewals</p>
@@ -115,7 +129,12 @@ export function DashboardClient({
 
       {tasksDueThisWeek.length > 0 && (
         <div className="rounded-lg border p-4">
-          <h2 className="font-bold text-lg mb-4">Tasks Due This Week</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">Tasks Due This Week</h2>
+            <a href="/tasks" className="text-sm text-blue-600 hover:text-blue-800">
+              View all
+            </a>
+          </div>
           <div className="space-y-2">
             {tasksDueThisWeek.slice(0, 10).map((task: any) => (
               <div key={task.id} className="flex justify-between items-start border-b pb-2 last:border-b-0">
@@ -132,7 +151,12 @@ export function DashboardClient({
 
       {activity.length > 0 && (
         <div className="rounded-lg border p-4">
-          <h2 className="font-bold text-lg mb-4">Recent Activity</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg">Recent Activity</h2>
+            <a href="/activity" className="text-sm text-blue-600 hover:text-blue-800">
+              View all
+            </a>
+          </div>
           <div className="space-y-2">
             {activity.slice(0, 10).map((entry: any) => (
               <div key={entry.id} className="text-sm border-b pb-2 last:border-b-0">
