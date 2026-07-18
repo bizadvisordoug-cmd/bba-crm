@@ -52,6 +52,41 @@ export function TasksClient({
     window.location.reload()
   }
 
+  const handleCompleteTask = async (taskId: string) => {
+    const task = allTasks.find((t: any) => t.id === taskId)
+    if (!task) return
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !task.completed }),
+      })
+
+      if (response.ok) {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('Failed to update task:', err)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('Failed to delete task:', err)
+    }
+  }
+
   const incompleteTasks = allTasks.filter((t: any) => !t.completed)
   const completedTasks = allTasks.filter((t: any) => t.completed)
 
@@ -118,13 +153,19 @@ export function TasksClient({
                           </td>
                           <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
                           <td className="p-4 text-sm">
-                            <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">
+                            <button
+                              onClick={() => handleCompleteTask(task.id)}
+                              className="text-blue-600 hover:text-blue-800 text-xs mr-2"
+                            >
                               Complete
                             </button>
                             <button className="text-slate-600 hover:text-slate-800 text-xs mr-2">
                               Edit
                             </button>
-                            <button className="text-red-600 hover:text-red-800 text-xs">
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="text-red-600 hover:text-red-800 text-xs"
+                            >
                               Delete
                             </button>
                           </td>
@@ -166,10 +207,16 @@ export function TasksClient({
                           <td className="p-4 text-sm">{dueDateStr}</td>
                           <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
                           <td className="p-4 text-sm">
-                            <button className="text-blue-600 hover:text-blue-800 text-xs mr-2">
+                            <button
+                              onClick={() => handleCompleteTask(task.id)}
+                              className="text-blue-600 hover:text-blue-800 text-xs mr-2"
+                            >
                               Reopen
                             </button>
-                            <button className="text-red-600 hover:text-red-800 text-xs">
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="text-red-600 hover:text-red-800 text-xs"
+                            >
                               Delete
                             </button>
                           </td>
