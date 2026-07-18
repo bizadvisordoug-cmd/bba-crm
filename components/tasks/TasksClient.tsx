@@ -230,6 +230,7 @@ export function TasksClient({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
