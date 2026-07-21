@@ -96,11 +96,11 @@ export function EditTaskModal({
               name="lead_id"
               required
               defaultValue={task.lead_id}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
             >
-              <option value="" className="bg-white text-black">Select a lead...</option>
+              <option value="">Select a lead...</option>
               {leads.map((lead) => (
-                <option key={lead.id} value={lead.id} className="bg-white text-black">
+                <option key={lead.id} value={lead.id}>
                   {lead.business_name}
                 </option>
               ))}
@@ -114,7 +114,7 @@ export function EditTaskModal({
               name="title"
               required
               defaultValue={task.title}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white placeholder-slate-400"
             />
           </div>
 
@@ -124,13 +124,13 @@ export function EditTaskModal({
               name="type"
               required
               defaultValue={task.type}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
             >
-              <option className="bg-white text-black">Call</option>
-              <option className="bg-white text-black">Email</option>
-              <option className="bg-white text-black">Follow Up</option>
-              <option className="bg-white text-black">Meeting</option>
-              <option className="bg-white text-black">Other</option>
+              <option>Call</option>
+              <option>Email</option>
+              <option>Follow Up</option>
+              <option>Meeting</option>
+              <option>Other</option>
             </select>
           </div>
 
@@ -151,11 +151,11 @@ export function EditTaskModal({
               name="assigned_to"
               required
               defaultValue={task.assigned_to}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
             >
-              <option value="" className="bg-white text-black">Select a person...</option>
+              <option value="">Select a person...</option>
               {users.map((user) => (
-                <option key={user.id} value={user.id} className="bg-white text-black">
+                <option key={user.id} value={user.id}>
                   {user.name}
                 </option>
               ))}
