@@ -94,7 +94,8 @@ export function EditTaskModal({
               name="lead_id"
               required
               defaultValue={task.lead_id}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
+              style={{ color: 'black' }}
             >
               <option value="" className="text-black">Select a lead...</option>
               {leads.map((lead) => (
@@ -112,7 +113,8 @@ export function EditTaskModal({
               name="title"
               required
               defaultValue={task.title}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white"
+              className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
+              style={{ color: 'black' }}
             />
           </div>
 
@@ -122,7 +124,8 @@ export function EditTaskModal({
               name="type"
               required
               defaultValue={task.type}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
+              style={{ color: 'black' }}
             >
               <option className="text-black">Call</option>
               <option className="text-black">Email</option>
@@ -139,7 +142,8 @@ export function EditTaskModal({
               name="due_date"
               required
               defaultValue={dueDateString}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white"
+              className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
+              style={{ color: 'black' }}
             />
           </div>
 
@@ -149,7 +153,8 @@ export function EditTaskModal({
               name="assigned_to"
               required
               defaultValue={task.assigned_to}
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
+              style={{ color: 'black' }}
             >
               <option value="" className="text-black">Select a person...</option>
               {users.map((user) => (
