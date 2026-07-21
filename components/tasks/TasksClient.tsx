@@ -90,6 +90,59 @@ export function TasksClient({
   const incompleteTasks = allTasks.filter((t: any) => !t.completed)
   const completedTasks = allTasks.filter((t: any) => t.completed)
 
+  const renderTaskTable = (taskList: any[], showCompleted: boolean) => (
+    <div className="rounded-lg border overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b bg-slate-50">
+            <th className="text-left p-4 font-semibold">Lead</th>
+            <th className="text-left p-4 font-semibold">Title</th>
+            <th className="text-left p-4 font-semibold">Type</th>
+            <th className="text-left p-4 font-semibold">Due Date</th>
+            <th className="text-left p-4 font-semibold">Assigned To</th>
+            <th className="text-left p-4 font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {taskList.map((task: any) => {
+            const dueDateObj = new Date(task.due_date)
+            const dueDateStr = dueDateObj.toLocaleDateString()
+            const isOverdue = dueDateObj < new Date() && !task.completed
+            const isToday = dueDateObj.toDateString() === new Date().toDateString()
+            const dateClass = isOverdue ? 'text-red-600 font-semibold' : isToday ? 'text-orange-600 font-semibold' : ''
+
+            return (
+              <tr key={task.id} className={showCompleted ? 'border-b hover:bg-slate-50 opacity-60' : 'border-b hover:bg-slate-50'}>
+                <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
+                <td className={`p-4 text-sm ${showCompleted ? 'line-through' : 'font-medium'}`}>{task.title}</td>
+                <td className="p-4 text-sm">{task.type}</td>
+                <td className={`p-4 text-sm ${dateClass}`}>{dueDateStr}</td>
+                <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
+                <td className="p-4 text-sm space-x-2">
+                  <button
+                    onClick={() => handleCompleteTask(task.id)}
+                    className="text-blue-600 hover:text-blue-800 text-xs"
+                  >
+                    {showCompleted ? 'Reopen' : 'Complete'}
+                  </button>
+                  <button className="text-slate-600 hover:text-slate-800 text-xs">
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="text-red-600 hover:text-red-800 text-xs"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <>
       <CreateTaskModal
@@ -120,105 +173,14 @@ export function TasksClient({
               No active tasks
             </div>
           ) : (
-            <div className="rounded-lg border overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="text-left p-4 font-semibold">Lead</th>
-                    <th className="text-left p-4 font-semibold">Title</th>
-                    <th className="text-left p-4 font-semibold">Type</th>
-                    <th className="text-left p-4 font-semibold">Due Date</th>
-                    <th className="text-left p-4 font-semibold">Assigned To</th>
-                    <th className="text-left p-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {incompleteTasks.map((task: any) => {
-                    const dueDateObj = new Date(task.due_date)
-                    const dueDateStr = dueDateObj.toLocaleDateString()
-                    const isOverdue = dueDateObj < new Date() && !task.completed
-                    const isToday = dueDateObj.toDateString() === new Date().toDateString()
-                    const dateClass = isOverdue ? 'text-red-600 font-semibold' : isToday ? 'text-orange-600 font-semibold' : ''
-
-                    return (
-                      <tr key={task.id} className="border-b hover:bg-slate-50">
-                        <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
-                        <td className="p-4 text-sm font-medium">{task.title}</td>
-                        <td className="p-4 text-sm">{task.type}</td>
-                        <td className={`p-4 text-sm ${dateClass}`}>{dueDateStr}</td>
-                        <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
-                        <td className="p-4 text-sm space-x-2">
-                          <button
-                            onClick={() => handleCompleteTask(task.id)}
-                            className="text-blue-600 hover:text-blue-800 text-xs"
-                          >
-                            Complete
-                          </button>
-                          <button className="text-slate-600 hover:text-slate-800 text-xs">
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            renderTaskTable(incompleteTasks, false)
           )}
         </div>
 
         {completedTasks.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Completed Tasks ({completedTasks.length})</h2>
-            <div className="rounded-lg border overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="text-left p-4 font-semibold">Lead</th>
-                    <th className="text-left p-4 font-semibold">Title</th>
-                    <th className="text-left p-4 font-semibold">Type</th>
-                    <th className="text-left p-4 font-semibold">Due Date</th>
-                    <th className="text-left p-4 font-semibold">Assigned To</th>
-                    <th className="text-left p-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {completedTasks.map((task: any) => {
-                    const dueDateStr = new Date(task.due_date).toLocaleDateString()
-
-                    return (
-                      <tr key={task.id} className="border-b hover:bg-slate-50 opacity-60">
-                        <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
-                        <td className="p-4 text-sm line-through">{task.title}</td>
-                        <td className="p-4 text-sm">{task.type}</td>
-                        <td className="p-4 text-sm">{dueDateStr}</td>
-                        <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
-                        <td className="p-4 text-sm space-x-2">
-                          <button
-                            onClick={() => handleCompleteTask(task.id)}
-                            className="text-blue-600 hover:text-blue-800 text-xs"
-                          >
-                            Reopen
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {renderTaskTable(completedTasks, true)}
           </div>
         )}
       </div>
