@@ -42,7 +42,7 @@ export function EditTaskModal({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  if (!task) return null
+  if (!task || !isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -79,28 +79,26 @@ export function EditTaskModal({
     }
   }
 
-  if (!isOpen) return null
-
   const dueDateObj = new Date(task.due_date)
   const dueDateString = dueDateObj.toISOString().slice(0, 16)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold mb-4 text-slate-900">Edit Task</h2>
+        <h2 className="text-xl font-bold mb-4 text-black">Edit Task</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Lead</label>
+            <label className="block text-sm font-semibold mb-2 text-black">Lead</label>
             <select
               name="lead_id"
               required
               defaultValue={task.lead_id}
               className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
             >
-              <option value="" className="bg-white text-black">Select a lead...</option>
+              <option value="" className="text-black">Select a lead...</option>
               {leads.map((lead) => (
-                <option key={lead.id} value={lead.id} className="bg-white text-black">
+                <option key={lead.id} value={lead.id} className="text-black">
                   {lead.business_name}
                 </option>
               ))}
@@ -108,34 +106,34 @@ export function EditTaskModal({
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Title</label>
+            <label className="block text-sm font-semibold mb-2 text-black">Title</label>
             <input
               type="text"
               name="title"
               required
               defaultValue={task.title}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white placeholder-slate-400"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white"
             />
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Type</label>
+            <label className="block text-sm font-semibold mb-2 text-black">Type</label>
             <select
               name="type"
               required
               defaultValue={task.type}
               className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
             >
-              <option className="bg-white text-black">Call</option>
-              <option className="bg-white text-black">Email</option>
-              <option className="bg-white text-black">Follow Up</option>
-              <option className="bg-white text-black">Meeting</option>
-              <option className="bg-white text-black">Other</option>
+              <option className="text-black">Call</option>
+              <option className="text-black">Email</option>
+              <option className="text-black">Follow Up</option>
+              <option className="text-black">Meeting</option>
+              <option className="text-black">Other</option>
             </select>
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Due Date</label>
+            <label className="block text-sm font-semibold mb-2 text-black">Due Date</label>
             <input
               type="datetime-local"
               name="due_date"
@@ -146,16 +144,16 @@ export function EditTaskModal({
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Assign To</label>
+            <label className="block text-sm font-semibold mb-2 text-black">Assign To</label>
             <select
               name="assigned_to"
               required
               defaultValue={task.assigned_to}
               className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
             >
-              <option value="" className="bg-white text-black">Select a person...</option>
+              <option value="" className="text-black">Select a person...</option>
               {users.map((user) => (
-                <option key={user.id} value={user.id} className="bg-white text-black">
+                <option key={user.id} value={user.id} className="text-black">
                   {user.name}
                 </option>
               ))}
@@ -168,7 +166,7 @@ export function EditTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+              className="px-4 py-2 text-sm text-black hover:bg-slate-100 rounded-lg"
             >
               Cancel
             </button>
