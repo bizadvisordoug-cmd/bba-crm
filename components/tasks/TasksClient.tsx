@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { CreateTaskModal } from './CreateTaskModal'
+import { EditTaskModal } from './EditTaskModal'
 
 interface Task {
   id: string
@@ -41,14 +42,30 @@ export function TasksClient({
   currentUserId,
   isAdmin,
 }: TasksClientProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [allTasks, setAllTasks] = useState(tasks)
 
-  const openModal = () => setIsModalOpen(true)
-  const closeModal = () => setIsModalOpen(false)
+  const openCreateModal = () => setIsCreateModalOpen(true)
+  const closeCreateModal = () => setIsCreateModalOpen(false)
+
+  const openEditModal = (task: Task) => {
+    setEditingTask(task)
+    setIsEditModalOpen(true)
+  }
+  const closeEditModal = () => {
+    setEditingTask(null)
+    setIsEditModalOpen(false)
+  }
 
   const handleTaskCreated = () => {
     setAllTasks(tasks)
+    window.location.reload()
+  }
+
+  const handleTaskUpdated = () => {
+    closeEditModal()
     window.location.reload()
   }
 
@@ -118,22 +135,27 @@ export function TasksClient({
                 <td className="p-4 text-sm">{task.type}</td>
                 <td className={`p-4 text-sm ${dateClass}`}>{dueDateStr}</td>
                 <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
-                <td className="p-4 text-sm space-x-2">
-                  <button
-                    onClick={() => handleCompleteTask(task.id)}
-                    className="text-blue-600 hover:text-blue-800 text-xs"
-                  >
-                    {showCompleted ? 'Reopen' : 'Complete'}
-                  </button>
-                  <button className="text-slate-600 hover:text-slate-800 text-xs">
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTask(task.id)}
-                    className="text-red-600 hover:text-red-800 text-xs"
-                  >
-                    Delete
-                  </button>
+                <td className="p-4 text-sm">
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleCompleteTask(task.id)}
+                      className="px-2.5 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs rounded font-medium"
+                    >
+                      {showCompleted ? 'Reopen' : 'Complete'}
+                    </button>
+                    <button
+                      onClick={() => openEditModal(task)}
+                      className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs rounded font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 text-xs rounded font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             )
@@ -146,11 +168,19 @@ export function TasksClient({
   return (
     <>
       <CreateTaskModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
+        isOpen={isCreateModalOpen}
+        onClose={closeCreateModal}
         leads={leads}
         users={users}
         onTaskCreated={handleTaskCreated}
+      />
+      <EditTaskModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        task={editingTask}
+        leads={leads}
+        users={users}
+        onTaskUpdated={handleTaskUpdated}
       />
       <div className="space-y-6 p-6">
         <div className="flex justify-between items-start">
@@ -159,7 +189,7 @@ export function TasksClient({
             <p className="text-slate-600 mt-2">Manage your tasks and follow-ups</p>
           </div>
           <button
-            onClick={openModal}
+            onClick={openCreateModal}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
           >
             + New Task

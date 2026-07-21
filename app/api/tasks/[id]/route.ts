@@ -15,11 +15,19 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { completed } = body
+    const { completed, lead_id, assigned_to, title, type, due_date } = body
+
+    const updateData: any = {}
+    if (completed !== undefined) updateData.completed = completed
+    if (lead_id) updateData.lead_id = lead_id
+    if (assigned_to) updateData.assigned_to = assigned_to
+    if (title) updateData.title = title
+    if (type) updateData.type = type
+    if (due_date) updateData.due_date = due_date
 
     const { data, error } = await supabase
       .from('tasks')
-      .update({ completed })
+      .update(updateData)
       .eq('id', id)
       .select()
 
