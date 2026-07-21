@@ -136,22 +136,22 @@ export function TasksClient({
                 <td className={`p-4 text-sm ${dateClass}`}>{dueDateStr}</td>
                 <td className="p-4 text-sm">{task.assigned_to_user?.name || 'Unassigned'}</td>
                 <td className="p-4 text-sm">
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => handleCompleteTask(task.id)}
-                      className="px-2.5 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs rounded font-medium"
+                      className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 text-xs rounded font-medium"
                     >
                       {showCompleted ? 'Reopen' : 'Complete'}
                     </button>
                     <button
                       onClick={() => openEditModal(task)}
-                      className="px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs rounded font-medium"
+                      className="px-3 py-1.5 bg-slate-600 text-white hover:bg-slate-700 text-xs rounded font-medium"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 text-xs rounded font-medium"
+                      className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 text-xs rounded font-medium"
                     >
                       Delete
                     </button>
