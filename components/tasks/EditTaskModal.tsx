@@ -114,7 +114,7 @@ export function EditTaskModal({
               name="title"
               required
               defaultValue={task.title}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white placeholder-slate-400"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white placeholder-slate-400"
             />
           </div>
 
@@ -141,7 +141,7 @@ export function EditTaskModal({
               name="due_date"
               required
               defaultValue={dueDateString}
-              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
+              className="w-full border border-slate-300 rounded p-2 text-sm text-black bg-white"
             />
           </div>
 
