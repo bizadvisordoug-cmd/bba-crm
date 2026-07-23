@@ -15,10 +15,11 @@ export default async function DashboardPage() {
 
   const isAdmin = profile?.role === 'owner' || profile?.role === 'vp_operations'
 
-  // Pipeline counts
-  const leadQuery = supabase.from('leads').select('pipeline_stage, status, contract_expiration, assigned_rep_id')
-  if (!isAdmin) leadQuery.eq('assigned_rep_id', user!.id)
-  const { data: leads } = await leadQuery
+  // Pipeline counts - show only user's leads for personal dashboard metrics
+  const { data: leads } = await supabase
+    .from('leads')
+    .select('pipeline_stage, status, contract_expiration, assigned_rep_id')
+    .eq('assigned_rep_id', user!.id)
 
   // Tasks due today/this week
   const today = new Date()
