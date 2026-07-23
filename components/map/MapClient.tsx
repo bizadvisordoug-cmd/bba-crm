@@ -157,10 +157,22 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
       m.on('mouseenter', LAYER_CIRCLES, () => { m.getCanvas().style.cursor = 'pointer' })
       m.on('mouseleave', LAYER_CIRCLES, () => { m.getCanvas().style.cursor = '' })
 
+      // Recompute canvas size — the flex container often finishes laying out
+      // after Mapbox reads its dimensions, which leaves a blank map on mobile.
+      m.resize()
+      setTimeout(() => m.resize(), 200)
+
       setMapLoaded(true)
     })
 
-    return () => m.remove()
+    // Keep the canvas correctly sized when the viewport/orientation changes
+    const handleResize = () => m.resize()
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      m.remove()
+    }
   }, [mapboxToken])
 
   // ── Keep GeoJSON source in sync with active filters ─────────────────────
@@ -272,8 +284,8 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
           )}
 
           {/* Map canvas — takes up remaining space */}
-          <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/[0.08] min-h-[400px] lg:min-h-0">
-            <div ref={mapContainer} className="w-full h-full" />
+          <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/[0.08] min-h-[65vh] lg:min-h-0">
+            <div ref={mapContainer} className="absolute inset-0" />
 
             {/* React popup overlay — styled to match the glass design system */}
             {selectedLead && (
