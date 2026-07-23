@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/task-reminders",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/campaign-reply-auto-complete",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
