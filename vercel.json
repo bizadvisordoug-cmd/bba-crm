@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/campaign-reply-auto-complete",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 18 * * *"
     }
   ]
 }
