@@ -203,13 +203,13 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
           }
         />
 
-        <div className="flex gap-4" style={{ height: 'calc(100vh - 220px)' }}>
-          {/* Filters sidebar */}
+        <div className="flex flex-col lg:flex-row gap-4" style={{ minHeight: 'calc(100vh - 180px)' }}>
+          {/* Filters sidebar — full-width on mobile, side column on desktop */}
           {showFilters && (
             <motion.div
               initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
-              className="w-56 flex-shrink-0 space-y-3"
+              className="w-full lg:w-56 lg:flex-shrink-0 space-y-3"
             >
               <GlassCard animate={false} className="p-4 space-y-3">
                 <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Filters</h3>
@@ -271,8 +271,8 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
             </motion.div>
           )}
 
-          {/* Map canvas */}
-          <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/[0.08]">
+          {/* Map canvas — takes up remaining space */}
+          <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/[0.08] min-h-[400px] lg:min-h-0">
             <div ref={mapContainer} className="w-full h-full" />
 
             {/* React popup overlay — styled to match the glass design system */}
