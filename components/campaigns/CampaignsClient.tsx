@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, MessageSquare, Play, Pause, ChevronDown, ChevronRight, Users, BarChart3, Send, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Mail, MessageSquare, Play, Pause, ChevronDown, ChevronRight, Users, BarChart3, Send, Plus, Pencil, Trash2, Copy } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard, StatCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/Button'
@@ -166,6 +166,30 @@ export function CampaignsClient({
     setActiveTab('campaigns')
   }
 
+  const handleCopyCampaign = async (campaign: any) => {
+    try {
+      const response = await fetch('/api/campaigns/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          isShared: true,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCampaignsList(prev => [data.campaign, ...prev])
+        alert(`Campaign copied to shared: ${data.message}`)
+      } else {
+        alert('Failed to copy campaign')
+      }
+    } catch (error) {
+      console.error('Failed to copy campaign:', error)
+      alert('Failed to copy campaign')
+    }
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div>
@@ -294,6 +318,16 @@ export function CampaignsClient({
                     >
                       Enroll
                     </Button>
+                    {!showShared && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Copy size={13} />}
+                        onClick={e => { e.stopPropagation(); handleCopyCampaign(campaign) }}
+                      >
+                        Share
+                      </Button>
+                    )}
                     {expanded
                       ? <ChevronDown size={16} className="text-[var(--text-muted)]" />
                       : <ChevronRight size={16} className="text-[var(--text-muted)]" />}
