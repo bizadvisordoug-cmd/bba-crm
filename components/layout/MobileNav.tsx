@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Columns3, Mail, Calendar } from 'lucide-react'
+import { LayoutDashboard, Users, Columns3, MapPin, Mail, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
   { href: '/crm', label: 'CRM', icon: Users },
   { href: '/kanban', label: 'Board', icon: Columns3 },
+  { href: '/map', label: 'Map', icon: MapPin },
   { href: '/campaigns', label: 'Email', icon: Mail },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
 ]
