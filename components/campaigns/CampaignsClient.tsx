@@ -54,6 +54,7 @@ export function CampaignsClient({
   const [enrollments, setEnrollments] = useState(initialEnrollments)
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'campaigns' | 'active' | 'stats'>('campaigns')
+  const [showShared, setShowShared] = useState(false)
 
   // ── Modal state ──────────────────────────────────────────────────────────────
   const [enrollModal, setEnrollModal] = useState<any | null>(null)
@@ -191,27 +192,52 @@ export function CampaignsClient({
         <StatCard label="Reply Rate"   value={`${replyRate}%`}  sub={`${stats.totalReplied} replied`} icon={<MessageSquare size={16} />} color="amber"  delay={0.2}  />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] w-fit">
-        {(['campaigns', 'active', 'stats'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
-              activeTab === t ? 'bg-white/[0.08] text-white' : 'text-[var(--text-secondary)] hover:text-white'
-            }`}
-          >
-            {t === 'active'
-              ? `Active (${enrollments.filter(e => e.status === 'active').length})`
-              : t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+      {/* Tabs and Filters */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] w-fit">
+          {(['campaigns', 'active', 'stats'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                activeTab === t ? 'bg-white/[0.08] text-white' : 'text-[var(--text-secondary)] hover:text-white'
+              }`}
+            >
+              {t === 'active'
+                ? `Active (${enrollments.filter(e => e.status === 'active').length})`
+                : t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'campaigns' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowShared(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                !showShared ? 'bg-purple-500/20 text-purple-300' : 'text-[var(--text-secondary)] hover:text-white'
+              }`}
+            >
+              My Campaigns
+            </button>
+            <button
+              onClick={() => setShowShared(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                showShared ? 'bg-purple-500/20 text-purple-300' : 'text-[var(--text-secondary)] hover:text-white'
+              }`}
+            >
+              Shared
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Campaigns list ── */}
       {activeTab === 'campaigns' && (
         <div className="space-y-3">
-          {campaignsList.map((campaign, i) => {
+          {campaignsList
+            .filter((c: any) => showShared ? c.is_shared : !c.is_shared)
+            .map((campaign, i) => {
             const expanded  = expandedCampaign === campaign.id
             const activeCount = enrollments.filter(e => e.campaign_id === campaign.id && e.status === 'active').length
             const sortedSteps = [...(campaign.steps ?? [])].sort((a: any, b: any) => a.step_number - b.step_number)

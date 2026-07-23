@@ -20,6 +20,7 @@ export default async function CampaignsPage() {
     .from('campaigns')
     .select('*, steps:campaign_steps(*)')
     .order('name')
+    .order('created_at', { ascending: false })
 
   // Use service role to bypass RLS and see all campaign enrollments
   const supabaseServiceRole = createClient(
