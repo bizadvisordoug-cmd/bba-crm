@@ -78,6 +78,10 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
     const m = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
+      // Force flat Mercator — GL JS v3 defaults to a 3D globe at low zoom, which
+      // renders as just the atmosphere gradient (no visible land) on a narrow
+      // mobile canvas. Mercator draws reliably at every viewport size.
+      projection: 'mercator',
       center: [-98.5795, 39.8283],
       zoom: 4,
     })
@@ -160,7 +164,6 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
       // Recompute canvas size — the flex container often finishes laying out
       // after Mapbox reads its dimensions, which leaves a blank map on mobile.
       m.resize()
-      setTimeout(() => m.resize(), 200)
 
       setMapLoaded(true)
     })
@@ -169,8 +172,15 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
     const handleResize = () => m.resize()
     window.addEventListener('resize', handleResize)
 
+    // The flex container frequently settles its height *after* Mapbox first
+    // measures it on mobile — observe the container and resize on any change so
+    // the canvas always matches its rendered box.
+    const ro = new ResizeObserver(() => m.resize())
+    ro.observe(mapContainer.current)
+
     return () => {
       window.removeEventListener('resize', handleResize)
+      ro.disconnect()
       m.remove()
     }
   }, [mapboxToken])
