@@ -295,7 +295,11 @@ export function MapClient({ leads, reps, isAdmin, canDeleteLeads, currentUserId 
 
           {/* Map canvas — takes up remaining space */}
           <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/[0.08] min-h-[65vh] lg:min-h-0">
-            <div ref={mapContainer} className="absolute inset-0" />
+            {/* Inline position:absolute is required — mapbox-gl.css sets
+                `.mapboxgl-map { position: relative }` which loads after Tailwind
+                and overrides the `absolute` class once Mapbox attaches, collapsing
+                the element to height 0 (blank map). Inline style beats the sheet. */}
+            <div ref={mapContainer} className="absolute inset-0" style={{ position: 'absolute', inset: 0 }} />
 
             {/* React popup overlay — styled to match the glass design system */}
             {selectedLead && (
