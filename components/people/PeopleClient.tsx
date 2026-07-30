@@ -2,13 +2,14 @@
 
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, Mail, Phone, Building2 } from 'lucide-react'
+import { Plus, Search, Mail, Phone, Building2, GitMerge, Check, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { PeopleDrawer, type PersonWithBusinesses } from '@/components/people/PeopleDrawer'
 import { PersonFormModal } from '@/components/people/PersonFormModal'
+import { MergePeopleModal } from '@/components/people/MergePeopleModal'
 
 interface PeopleClientProps {
   people: PersonWithBusinesses[]
@@ -21,6 +22,35 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
   const [search, setSearch] = useState('')
   const [selectedPerson, setSelectedPerson] = useState<PersonWithBusinesses | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+
+  // Multi-select + merge
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showMerge, setShowMerge] = useState(false)
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setShowMerge(false)
+  }
+
+  const peopleToMerge = people.filter(p => selectedIds.has(p.id))
+
+  const handleMerged = (survivor: PersonWithBusinesses, removedIds: string[]) => {
+    setPeople(prev => prev
+      .filter(p => !removedIds.includes(p.id))
+      .map(p => p.id === survivor.id ? survivor : p))
+    exitSelectMode()
+  }
 
   const filtered = useMemo(() => {
     return people.filter(p => {
@@ -54,9 +84,22 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
         title="People"
         subtitle={`${filtered.length} of ${people.length} contacts`}
         actions={
-          <Button variant="primary" size="sm" icon={<Plus size={15} />} onClick={() => setShowAddModal(true)}>
-            Add Contact
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              selectMode ? (
+                <Button variant="ghost" size="sm" icon={<X size={15} />} onClick={exitSelectMode}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" icon={<GitMerge size={15} />} onClick={() => setSelectMode(true)}>
+                  Select &amp; Merge
+                </Button>
+              )
+            )}
+            <Button variant="primary" size="sm" icon={<Plus size={15} />} onClick={() => setShowAddModal(true)}>
+              Add Contact
+            </Button>
+          </div>
         }
       />
 
@@ -89,11 +132,22 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.02 }}
-            onClick={() => setSelectedPerson(person)}
-            className="glass rounded-xl p-4 cursor-pointer hover:bg-white/[0.06] transition-colors group"
+            onClick={() => selectMode ? toggleSelected(person.id) : setSelectedPerson(person)}
+            className={`glass rounded-xl p-4 cursor-pointer transition-colors group ${
+              selectMode && selectedIds.has(person.id)
+                ? 'ring-2 ring-purple-500/60 bg-purple-500/[0.06]'
+                : 'hover:bg-white/[0.06]'
+            }`}
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3 flex-1">
+                {selectMode && (
+                  <span className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${
+                    selectedIds.has(person.id) ? 'border-purple-400 bg-purple-500' : 'border-white/30'
+                  }`}>
+                    {selectedIds.has(person.id) && <Check size={13} className="text-white" />}
+                  </span>
+                )}
                 <Avatar name={person.name} size="md" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-white truncate group-hover:text-purple-300 transition-colors">{person.name}</h3>
@@ -150,7 +204,50 @@ export function PeopleClient({ people: initialPeople, isAdmin }: PeopleClientPro
         ))}
       </div>
 
+      {/* Floating merge bar */}
+      <AnimatePresence>
+        {selectMode && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-2xl glass-strong border border-white/[0.1] shadow-2xl"
+          >
+            <span className="text-sm text-white">
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-[var(--text-muted)] hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<GitMerge size={14} />}
+              disabled={selectedIds.size < 2}
+              onClick={() => setShowMerge(true)}
+            >
+              Merge
+            </Button>
+            {selectedIds.size < 2 && (
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Select 2+ to merge</span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Modals */}
+      {showMerge && peopleToMerge.length >= 2 && (
+        <MergePeopleModal
+          open={showMerge}
+          people={peopleToMerge}
+          onClose={() => setShowMerge(false)}
+          onMerged={handleMerged}
+        />
+      )}
+
       <PersonFormModal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
