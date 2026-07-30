@@ -141,34 +141,92 @@ export function LeadImportModal({ open, onClose, currentUserId, onImport }: Lead
   const handleConfirmImport = async () => {
     setStep('importing')
     try {
-      const payloads = validRows.map(row => ({
-        business_name: row.business_name!,
-        owner_name: row.owner_name || '',
-        address: row.address || null,
-        city: row.city || null,
-        state: row.state || null,
-        zip: row.zip || null,
-        owner_phone: row.owner_phone || null,
-        business_phone: row.business_phone || null,
-        email: row.email || null,
-        industry: row.industry || null,
-        monthly_processing_volume: row.monthly_processing_volume ? parseFloat(row.monthly_processing_volume) : null,
-        current_processor: row.current_processor || null,
-        current_rate: row.current_rate ? parseFloat(row.current_rate) : null,
-        pos_system: row.pos_system || null,
-        lead_source: row.lead_source || null,
-        referred_by: row.referred_by || null,
-        referral_bonus_amount: row.referral_bonus_amount ? parseFloat(row.referral_bonus_amount) : null,
-        notes: row.notes || null,
-        pipeline_stage: 'New Lead',
-        status: 'Prospect',
-        assigned_rep_id: currentUserId,
-      }))
+      // ── 1. Create one owner (person) per unique owner name in this batch ──
+      // Leads carry flat owner_name/business_name text, but the rest of the app
+      // (edit drawer selectors, People page, per-business contacts) works off the
+      // relational people/businesses tables via owner_id/business_id. If we only
+      // insert the text fields the imported leads can't be edited or selected.
+      // Dedupe within the batch by name so one owner with several imported
+      // locations gets a single person row; we do NOT match pre-existing people
+      // by name (a bare first name could link to an unrelated person).
+      const ownerByKey = new Map<string, { name: string; phone: string | null; email: string | null }>()
+      for (const row of validRows) {
+        const name = (row.owner_name || '').trim()
+        if (!name) continue
+        const key = name.toLowerCase()
+        if (!ownerByKey.has(key)) {
+          ownerByKey.set(key, { name, phone: row.owner_phone || null, email: row.email || null })
+        }
+      }
+      const ownerIdByKey = new Map<string, string>()
+      if (ownerByKey.size > 0) {
+        const { data: people, error: peopleErr } = await supabase
+          .from('people')
+          .insert([...ownerByKey.values()])
+          .select('id, name')
+        if (peopleErr) throw peopleErr
+        for (const p of people) ownerIdByKey.set(p.name.trim().toLowerCase(), p.id)
+      }
+
+      // ── 2. Create a business per row (each row is a distinct location) and
+      //       link it to the resolved owner, then build the lead payloads ──
+      const payloads = []
+      for (const row of validRows) {
+        const ownerKey = (row.owner_name || '').trim().toLowerCase()
+        const owner_id = ownerKey ? ownerIdByKey.get(ownerKey) ?? null : null
+
+        let business_id: string | null = null
+        if (row.business_name) {
+          const { data: biz, error: bizErr } = await supabase
+            .from('businesses')
+            .insert({
+              owner_id,
+              business_name: row.business_name,
+              address: row.address || null,
+              city: row.city || null,
+              state: row.state || null,
+              zip: row.zip || null,
+              industry: row.industry || null,
+              business_phone: row.business_phone || null,
+              business_email: row.email || null,
+            })
+            .select('id')
+            .single()
+          if (bizErr) throw bizErr
+          business_id = biz.id
+        }
+
+        payloads.push({
+          business_name: row.business_name!,
+          owner_name: row.owner_name || '',
+          owner_id,
+          business_id,
+          address: row.address || null,
+          city: row.city || null,
+          state: row.state || null,
+          zip: row.zip || null,
+          owner_phone: row.owner_phone || null,
+          business_phone: row.business_phone || null,
+          email: row.email || null,
+          industry: row.industry || null,
+          monthly_processing_volume: row.monthly_processing_volume ? parseFloat(row.monthly_processing_volume) : null,
+          current_processor: row.current_processor || null,
+          current_rate: row.current_rate ? parseFloat(row.current_rate) : null,
+          pos_system: row.pos_system || null,
+          lead_source: row.lead_source || null,
+          referred_by: row.referred_by || null,
+          referral_bonus_amount: row.referral_bonus_amount ? parseFloat(row.referral_bonus_amount) : null,
+          notes: row.notes || null,
+          pipeline_stage: 'New Lead',
+          status: 'Prospect',
+          assigned_rep_id: currentUserId,
+        })
+      }
 
       const { data: inserted, error } = await supabase
         .from('leads')
         .insert(payloads)
-        .select('*, assigned_rep:users(id, name, email)')
+        .select('*, assigned_rep:users(id, name, email), owner:people(id, name, phone, email), business:businesses(id, owner_id, business_name, address, city, state, zip, industry)')
 
       if (error) throw error
 
