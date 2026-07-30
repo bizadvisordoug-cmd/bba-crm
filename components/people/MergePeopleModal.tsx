@@ -229,7 +229,7 @@ export function MergePeopleModal({ open, people, onClose, onMerged }: MergePeopl
 
         <div className="flex items-center gap-2 text-xs px-1" style={{ color: 'var(--text-muted)' }}>
           <AlertTriangle size={13} className="text-amber-400/80 flex-shrink-0" />
-          {people.length - 1} duplicate{people.length - 1 !== 1 ? 's' : ''} will be permanently removed. This can&rsquo;t be undone.
+          {people.length - 1} duplicate{people.length - 1 !== 1 ? 's' : ''}{' '}will be permanently removed. This can&rsquo;t be undone.
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
