@@ -6,7 +6,7 @@ import { EditTaskModal } from './EditTaskModal'
 
 interface Task {
   id: string
-  lead_id: string
+  lead_id: string | null
   assigned_to: string
   title: string
   type: string
@@ -130,7 +130,7 @@ export function TasksClient({
 
             return (
               <tr key={task.id} className={showCompleted ? 'border-b hover:bg-slate-50 opacity-60' : 'border-b hover:bg-slate-50'}>
-                <td className="p-4 text-sm">{task.lead?.business_name || 'N/A'}</td>
+                <td className="p-4 text-sm">{task.lead?.business_name || '—'}</td>
                 <td className={`p-4 text-sm ${showCompleted ? 'line-through' : 'font-medium'}`}>{task.title}</td>
                 <td className="p-4 text-sm">{task.type}</td>
                 <td className={`p-4 text-sm ${dateClass}`}>{dueDateStr}</td>

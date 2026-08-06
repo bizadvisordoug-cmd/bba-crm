@@ -87,14 +87,15 @@ export function CreateTaskModal({
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-            <label className="block text-sm font-semibold mb-2 text-slate-900">Lead</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-900">
+              Lead <span className="font-normal text-slate-500">(optional)</span>
+            </label>
             <select
               name="lead_id"
-              required
               style={fieldStyle}
               className="w-full border rounded p-2 text-sm"
             >
-              <option value="">Select a lead...</option>
+              <option value="">No lead — general task</option>
               {leads.map((lead) => (
                 <option key={lead.id} value={lead.id}>
                   {lead.business_name}

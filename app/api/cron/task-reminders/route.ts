@@ -121,10 +121,10 @@ export async function GET(req: NextRequest) {
         emailBody += `<h3 style="color: #dc2626;">Overdue Tasks (${overdueTasks.length})</h3>`
         emailBody += `<ul>`
         for (const task of overdueTasks) {
-          const leadName = task.lead?.business_name || 'Unnamed Lead'
-          const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/tasks`
+          // Tasks without a lead are standalone to-dos — omit the lead entirely
+          const leadPart = task.lead?.business_name ? ` - <em>${task.lead.business_name}</em>` : ''
           const dueDate = new Date(task.due_date).toLocaleDateString()
-          emailBody += `<li><strong>${task.title}</strong> (${task.type}) - <em>${leadName}</em><br/><small>Due: ${dueDate}</small></li>`
+          emailBody += `<li><strong>${task.title}</strong> (${task.type})${leadPart}<br/><small>Due: ${dueDate}</small></li>`
         }
         emailBody += `</ul>`
       }
@@ -133,9 +133,8 @@ export async function GET(req: NextRequest) {
         emailBody += `<h3 style="color: #f59e0b;">Due Today (${dueTodayTasks.length})</h3>`
         emailBody += `<ul>`
         for (const task of dueTodayTasks) {
-          const leadName = task.lead?.business_name || 'Unnamed Lead'
-          const leadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/tasks`
-          emailBody += `<li><strong>${task.title}</strong> (${task.type}) - <em>${leadName}</em></li>`
+          const leadPart = task.lead?.business_name ? ` - <em>${task.lead.business_name}</em>` : ''
+          emailBody += `<li><strong>${task.title}</strong> (${task.type})${leadPart}</li>`
         }
         emailBody += `</ul>`
       }

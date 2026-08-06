@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { lead_id, assigned_to, title, type, due_date } = body
 
-    if (!lead_id || !assigned_to || !title || !type || !due_date) {
+    // lead_id is optional — a task can be a standalone to-do not tied to a lead
+    if (!assigned_to || !title || !type || !due_date) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        lead_id,
+        lead_id: lead_id || null,
         assigned_to,
         title,
         type,
@@ -60,12 +61,14 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      // Get lead details
-      const { data: lead } = await serviceSupabase
-        .from('leads')
-        .select('business_name')
-        .eq('id', lead_id)
-        .single()
+      // Get lead details (only when the task is tied to a lead)
+      const { data: lead } = lead_id
+        ? await serviceSupabase
+            .from('leads')
+            .select('business_name')
+            .eq('id', lead_id)
+            .single()
+        : { data: null }
 
       if (assignedUser?.email) {
         // Get SMTP config from any admin
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
             <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin: 15px 0;">
               <p><strong>${title}</strong></p>
               <p><strong>Type:</strong> ${type}</p>
-              <p><strong>Lead:</strong> ${lead?.business_name || 'N/A'}</p>
+              ${lead?.business_name ? `<p><strong>Lead:</strong> ${lead.business_name}</p>` : ''}
               <p><strong>Due Date:</strong> ${dueDate}</p>
             </div>
             <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks" style="display: inline-block; padding: 10px 20px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 6px;">View Task</a></p>

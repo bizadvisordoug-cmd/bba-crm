@@ -19,7 +19,8 @@ export async function PATCH(
 
     const updateData: any = {}
     if (completed !== undefined) updateData.completed = completed
-    if (lead_id) updateData.lead_id = lead_id
+    // lead_id is optional — when present but empty, clear it (standalone task)
+    if (lead_id !== undefined) updateData.lead_id = lead_id || null
     if (assigned_to) updateData.assigned_to = assigned_to
     if (title) updateData.title = title
     if (type) updateData.type = type
