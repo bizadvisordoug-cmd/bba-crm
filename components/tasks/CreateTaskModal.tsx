@@ -68,9 +68,21 @@ export function CreateTaskModal({
 
   if (!isOpen) return null
 
+  // Inline styles beat the global unlayered `input, select, textarea` rules in
+  // globals.css (which force white text on a transparent bg for the dark app
+  // theme). This modal is a light card, so the fields need explicit dark text.
+  const fieldStyle: React.CSSProperties = {
+    color: '#0f172a',
+    background: '#ffffff',
+    borderColor: '#cbd5e1',
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      {/* Scoped placeholder color — global input::placeholder is unlayered and
+          would otherwise render placeholders too faint on this white card */}
+      <style>{`.create-task-modal input::placeholder { color: #94a3b8; }`}</style>
+      <div className="create-task-modal bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <h2 className="text-xl font-bold mb-4 text-slate-900">Create New Task</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -79,11 +91,12 @@ export function CreateTaskModal({
             <select
               name="lead_id"
               required
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              style={fieldStyle}
+              className="w-full border rounded p-2 text-sm"
             >
-              <option value="" className="bg-white text-black">Select a lead...</option>
+              <option value="">Select a lead...</option>
               {leads.map((lead) => (
-                <option key={lead.id} value={lead.id} className="bg-white text-black">
+                <option key={lead.id} value={lead.id}>
                   {lead.business_name}
                 </option>
               ))}
@@ -97,7 +110,8 @@ export function CreateTaskModal({
               name="title"
               required
               placeholder="Task title"
-              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white placeholder-slate-400"
+              style={fieldStyle}
+              className="w-full border rounded p-2 text-sm"
             />
           </div>
 
@@ -106,14 +120,15 @@ export function CreateTaskModal({
             <select
               name="type"
               required
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              style={fieldStyle}
+              className="w-full border rounded p-2 text-sm"
               defaultValue="Follow Up"
             >
-              <option className="bg-white text-black">Call</option>
-              <option className="bg-white text-black">Email</option>
-              <option className="bg-white text-black">Follow Up</option>
-              <option className="bg-white text-black">Meeting</option>
-              <option className="bg-white text-black">Other</option>
+              <option>Call</option>
+              <option>Email</option>
+              <option>Follow Up</option>
+              <option>Meeting</option>
+              <option>Other</option>
             </select>
           </div>
 
@@ -123,7 +138,8 @@ export function CreateTaskModal({
               type="datetime-local"
               name="due_date"
               required
-              className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 bg-white"
+              style={fieldStyle}
+              className="w-full border rounded p-2 text-sm"
             />
           </div>
 
@@ -132,11 +148,12 @@ export function CreateTaskModal({
             <select
               name="assigned_to"
               required
-              className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-black"
+              style={fieldStyle}
+              className="w-full border rounded p-2 text-sm"
             >
-              <option value="" className="bg-white text-black">Select a person...</option>
+              <option value="">Select a person...</option>
               {users.map((user) => (
-                <option key={user.id} value={user.id} className="bg-white text-black">
+                <option key={user.id} value={user.id}>
                   {user.name}
                 </option>
               ))}
