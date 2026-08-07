@@ -89,9 +89,19 @@ export function CampaignsClient({
       let enrolledCount = 0
 
       for (const leadId of selectedLeadIds) {
+        // next_send_at marks step 1 as due now. The immediate send below
+        // normally advances it to step 2 — but if that send fails (rep SMTP
+        // not set up yet, say) this leaves the enrollment visible to the
+        // scheduler cron instead of stranding it with nothing scheduled.
         const { data } = await supabase
           .from('campaign_enrollments')
-          .insert({ lead_id: leadId, campaign_id: enrollModal.id, current_step: 1, status: 'active' })
+          .insert({
+            lead_id: leadId,
+            campaign_id: enrollModal.id,
+            current_step: 1,
+            status: 'active',
+            next_send_at: new Date().toISOString(),
+          })
           .select('*, lead:leads(id, business_name, owner_name, email), campaign:campaigns(name)')
           .single()
 

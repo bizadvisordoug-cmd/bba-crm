@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/campaign-reply-auto-complete",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/campaign-steps",
+      "schedule": "0 13 * * *"
     }
   ]
 }
