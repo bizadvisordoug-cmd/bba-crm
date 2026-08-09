@@ -48,9 +48,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'No POS systems configured', emailsSent: 0 })
     }
 
+    // ?force=true ignores the day-of-month gate so a reminder can be verified
+    // on demand instead of waiting for the next payment cycle. Still requires
+    // CRON_SECRET, and the mail goes to your own inbox — never to partners.
+    const force = req.nextUrl.searchParams.get('force') === 'true'
+
     // Find which POS systems have a payment today (send reminder day after payment_day)
     const posSystemsPayingToday = posSystems.filter(pos => {
       if (!pos.payment_day) return false
+      if (force) return true
       const reminderDay = pos.payment_day === 31 ? 1 : pos.payment_day + 1
       return dayOfMonth === reminderDay
     })
@@ -65,10 +71,10 @@ export async function GET(req: NextRequest) {
     const posNamesPayingToday = posSystemsPayingToday.map(p => p.name)
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
-      .select('id, business_name, referred_by, referral_percentage, referral_type, monthly_processing_volume, suggested_pos_system, status')
+      .select('id, business_name, referred_by, referral_percentage, referral_type, monthly_processing_volume, pos_system, status')
       .eq('referral_type', 'residual')
       .eq('status', 'Active Client')
-      .in('suggested_pos_system', posNamesPayingToday)
+      .in('pos_system', posNamesPayingToday)
       .not('referred_by', 'is', null)
       .not('referral_percentage', 'is', null)
 
@@ -124,7 +130,7 @@ export async function GET(req: NextRequest) {
     for (const [referrerName, referredLeads] of Object.entries(leadsByReferrer)) {
       // Calculate total owed
       let totalOwed = 0
-      const leadDetails: Array<{ name: string; percentage: number; volume: number; estimated: number }> = []
+      const leadDetails: Array<{ name: string; pos: string; percentage: number; volume: number; estimated: number }> = []
 
       for (const lead of referredLeads) {
         const volume = lead.monthly_processing_volume || 0
@@ -134,6 +140,7 @@ export async function GET(req: NextRequest) {
         totalOwed += estimated
         leadDetails.push({
           name: lead.business_name || 'Untitled',
+          pos: lead.pos_system || '—',
           percentage,
           volume,
           estimated,
@@ -146,7 +153,8 @@ export async function GET(req: NextRequest) {
       emailBody += `<p>Monthly residual payments to <strong>${referrerName}</strong> are due today. Here's the breakdown:</p>`
       emailBody += `<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">`
       emailBody += `<tr style="background: #f3f4f6; border-bottom: 1px solid #e5e7eb;">`
-      emailBody += `<th style="padding: 10px; text-align: left;">Lead</th>`
+      emailBody += `<th style="padding: 10px; text-align: left;">Business</th>`
+      emailBody += `<th style="padding: 10px; text-align: left;">POS System</th>`
       emailBody += `<th style="padding: 10px; text-align: right;">Monthly Volume</th>`
       emailBody += `<th style="padding: 10px; text-align: center;">%</th>`
       emailBody += `<th style="padding: 10px; text-align: right;">Estimated</th>`
@@ -155,6 +163,7 @@ export async function GET(req: NextRequest) {
       for (const lead of leadDetails) {
         emailBody += `<tr style="border-bottom: 1px solid #e5e7eb;">`
         emailBody += `<td style="padding: 10px;">${lead.name}</td>`
+        emailBody += `<td style="padding: 10px;">${lead.pos}</td>`
         emailBody += `<td style="padding: 10px; text-align: right;">$${lead.volume.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`
         emailBody += `<td style="padding: 10px; text-align: center;">${lead.percentage}%</td>`
         emailBody += `<td style="padding: 10px; text-align: right; font-weight: bold;">$${lead.estimated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`
