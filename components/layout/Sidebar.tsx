@@ -17,6 +17,7 @@ import {
   ChevronRight,
   DollarSign,
   CheckCircle2,
+  Handshake,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/Avatar'
@@ -30,6 +31,8 @@ const BASE_NAV = [
   { href: '/kanban', label: 'Pipeline', icon: Columns3 },
   { href: '/tasks', label: 'My Tasks', icon: CheckCircle2 },
   { href: '/campaigns', label: 'Campaigns', icon: Mail },
+  // Visible to everyone — reps see referrals on their own leads, admins see all
+  { href: '/crm/referrals', label: 'Referrals', icon: Handshake },
 ]
 const ADMIN_NAV = [{ href: '/crm/commissions', label: 'Commissions', icon: DollarSign }]
 const REP_NAV   = [{ href: '/my-commissions',   label: 'My Commissions', icon: DollarSign }]

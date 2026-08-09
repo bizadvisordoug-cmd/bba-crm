@@ -33,6 +33,23 @@ export function ReferralSection({
   onReferralPaidChange,
   canEdit,
 }: ReferralSectionProps) {
+  // Payouts group by this name, so a typo or casing variant silently splits a
+  // partner in two. Offering the known partners as suggestions keeps entries
+  // consistent while still allowing a brand-new name to be typed.
+  const [partners, setPartners] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!canEdit) return
+    const supabase = createClient()
+    supabase
+      .from('referral_partners')
+      .select('name')
+      .eq('active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data) setPartners(data.map((p: { name: string }) => p.name))
+      })
+  }, [canEdit])
 
   const estimatedMonthly = referralPercentage && monthlyProcessingVolume
     ? (monthlyProcessingVolume * referralPercentage) / 100
@@ -50,9 +67,14 @@ export function ReferralSection({
           <Input
             label="Referred By"
             placeholder="Enter referral partner name..."
+            list="referral-partner-options"
             value={referredBy || ''}
             onChange={e => onReferredByChange(e.target.value)}
+            hint={partners.length > 0 ? 'Pick an existing partner or type a new one.' : undefined}
           />
+          <datalist id="referral-partner-options">
+            {partners.map(name => <option key={name} value={name} />)}
+          </datalist>
 
           {/* Referral Type */}
           {referredBy && (
