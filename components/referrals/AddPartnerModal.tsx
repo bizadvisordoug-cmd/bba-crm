@@ -15,6 +15,7 @@ export function AddPartnerModal({ onClose, onCreated }: AddPartnerModalProps) {
     contact_name: '',
     contact_email: '',
     contact_phone: '',
+    payment_day: '15',
     notes: '',
   })
   const [saving, setSaving] = useState(false)
@@ -92,6 +93,15 @@ export function AddPartnerModal({ onClose, onCreated }: AddPartnerModalProps) {
             placeholder="Optional"
             value={form.contact_phone}
             onChange={e => set('contact_phone', e.target.value)}
+          />
+          <Input
+            label="Payment Day"
+            type="number"
+            min="1"
+            max="31"
+            value={form.payment_day}
+            onChange={e => set('payment_day', e.target.value)}
+            hint="Day of the month this partner gets paid."
           />
           <Textarea
             label="Notes (optional)"

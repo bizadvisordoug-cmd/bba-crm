@@ -12,6 +12,22 @@
 --     whether THIS month's residual had been paid. Adds period_year/month.
 -- ============================================================
 
+-- ── 0. Reconcile referral_partners with production ────────────────────────
+-- Production has a payment_day column on referral_partners that no migration
+-- in this repo creates — it was added straight to the database. It is NOT NULL
+-- with no default, so any insert that omits it fails. Ensure the column exists
+-- for environments built from migrations, and give it a default so inserts
+-- that do not name it (the backfill below, and POST /api/referrals/partners)
+-- succeed. 15 matches the default used for pos_systems.payment_day in 029.
+
+ALTER TABLE public.referral_partners
+  ADD COLUMN IF NOT EXISTS payment_day int;
+
+ALTER TABLE public.referral_partners
+  ALTER COLUMN payment_day SET DEFAULT 15;
+
+UPDATE public.referral_partners SET payment_day = 15 WHERE payment_day IS NULL;
+
 -- ── 1. Link leads to partners ─────────────────────────────────────────────
 
 ALTER TABLE public.leads

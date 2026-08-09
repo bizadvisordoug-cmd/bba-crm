@@ -28,10 +28,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, contact_name, contact_email, contact_phone, notes } = body
+    const { name, contact_name, contact_email, contact_phone, notes, payment_day } = body
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Partner name is required' }, { status: 400 })
+    }
+
+    const day = Number(payment_day)
+    if (payment_day !== undefined && payment_day !== null && payment_day !== '' &&
+        (!Number.isInteger(day) || day < 1 || day > 31)) {
+      return NextResponse.json({ error: 'Payment day must be between 1 and 31' }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -42,6 +48,9 @@ export async function POST(request: NextRequest) {
         contact_email: contact_email?.trim() || null,
         contact_phone: contact_phone?.trim() || null,
         notes:         notes?.trim()         || null,
+        // referral_partners.payment_day is NOT NULL in production; fall back to
+        // the column default rather than sending null.
+        ...(Number.isInteger(day) && day >= 1 && day <= 31 ? { payment_day: day } : {}),
       })
       .select()
       .single()
@@ -73,7 +82,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, name, contact_name, contact_email, contact_phone, notes, active } = body
+    const { id, name, contact_name, contact_email, contact_phone, notes, active, payment_day } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 })
@@ -86,6 +95,15 @@ export async function PATCH(request: NextRequest) {
     if (contact_phone !== undefined) updates.contact_phone = contact_phone?.trim() || null
     if (notes !== undefined)         updates.notes         = notes?.trim()         || null
     if (active !== undefined)        updates.active        = active
+
+    if (payment_day !== undefined) {
+      const day = Number(payment_day)
+      // NOT NULL in production, so never clear it — reject instead.
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        return NextResponse.json({ error: 'Payment day must be between 1 and 31' }, { status: 400 })
+      }
+      updates.payment_day = day
+    }
 
     const { data, error } = await supabase
       .from('referral_partners')
