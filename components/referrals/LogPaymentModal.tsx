@@ -19,13 +19,27 @@ interface LogPaymentModalProps {
 }
 
 export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPaymentModalProps) {
-  // Prefilled from the calculated cut but editable, for rounding or an agreed
-  // adjustment on a particular month.
-  const [amount, setAmount]     = useState(item.amount.toFixed(2))
+  // When the commission for this period has not been entered, the received
+  // figure is unknown — collect it here and derive the partner's cut from it,
+  // rather than making the user do the arithmetic.
+  const needsReceived = item.type === 'residual' && item.received === null
+
+  const [received, setReceived] = useState('')
+  const [amount, setAmount]     = useState(needsReceived ? '' : item.amount.toFixed(2))
   const [datePaid, setDatePaid] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes]       = useState('')
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
+
+  // Typing what you received recalculates the payout, but the payout stays
+  // editable afterwards for rounding or an agreed adjustment.
+  const handleReceivedChange = (value: string) => {
+    setReceived(value)
+    const parsed = parseFloat(value)
+    if (!isNaN(parsed) && item.percentage) {
+      setAmount(((parsed * item.percentage) / 100).toFixed(2))
+    }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +85,7 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl p-6"
+        className="w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
         style={{
           background: 'rgba(16,20,32,0.98)',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -96,13 +110,15 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
                 <span style={{ color: 'var(--text-muted)' }}>Period</span>
                 <span className="text-white">{MONTHS[month - 1]} {year}</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span style={{ color: 'var(--text-muted)' }}>Received</span>
-                <span className="text-white">
-                  ${item.received?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  {item.processor && ` from ${item.processor}`}
-                </span>
-              </div>
+              {item.received !== null && (
+                <div className="flex justify-between text-xs">
+                  <span style={{ color: 'var(--text-muted)' }}>Received</span>
+                  <span className="text-white">
+                    ${item.received.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {item.processor && ` from ${item.processor}`}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span style={{ color: 'var(--text-muted)' }}>Partner share</span>
                 <span className="text-white">{item.percentage}%</span>
@@ -112,8 +128,20 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
         </div>
 
         <form onSubmit={submit} className="space-y-3">
+          {needsReceived && (
+            <Input
+              label="Amount Received From Processor ($)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={received}
+              onChange={e => handleReceivedChange(e.target.value)}
+              hint="No commission was recorded for this period — enter what you were paid for this deal."
+            />
+          )}
+
           <Input
-            label="Amount Paid ($)"
+            label="Payout to Partner ($)"
             type="number"
             step="0.01"
             min="0"

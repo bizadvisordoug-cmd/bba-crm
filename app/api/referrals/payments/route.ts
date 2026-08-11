@@ -42,13 +42,23 @@ export async function POST(request: NextRequest) {
       period_year,
       period_month,
       notes,
+      no_payment_due,
     } = body
 
-    if (!lead_id || !referred_by || amount === undefined || amount === null || !date_paid) {
+    const nothingDue = no_payment_due === true
+
+    if (!lead_id || !referred_by || !date_paid) {
       return NextResponse.json(
-        { error: 'lead_id, referred_by, amount and date_paid are required' },
+        { error: 'lead_id, referred_by and date_paid are required' },
         { status: 400 }
       )
+    }
+
+    // A "nothing owed this period" marker carries no amount of its own.
+    const finalAmount = nothingDue ? 0 : amount
+
+    if (!nothingDue && (finalAmount === undefined || finalAmount === null)) {
+      return NextResponse.json({ error: 'amount is required' }, { status: 400 })
     }
 
     if (payment_type === 'residual' && (!period_year || !period_month)) {
@@ -64,7 +74,7 @@ export async function POST(request: NextRequest) {
         lead_id,
         partner_id:   partner_id ?? null,
         referred_by,
-        amount,
+        amount:       finalAmount,
         percentage:   percentage ?? null,
         date_paid,
         payment_type: payment_type ?? null,
@@ -73,6 +83,7 @@ export async function POST(request: NextRequest) {
         period_year:  payment_type === 'residual' ? period_year  : null,
         period_month: payment_type === 'residual' ? period_month : null,
         notes:        notes ?? null,
+        no_payment_due: nothingDue,
       })
       .select('*, lead:leads(id, business_name)')
       .single()
@@ -81,7 +92,7 @@ export async function POST(request: NextRequest) {
       // Partial unique index on (lead_id, period_year, period_month)
       if (error.code === '23505') {
         return NextResponse.json(
-          { error: 'That residual has already been logged for this month' },
+          { error: 'That residual has already been recorded for this month' },
           { status: 409 }
         )
       }
@@ -89,8 +100,9 @@ export async function POST(request: NextRequest) {
     }
 
     // A one-time bonus is settled by a single payment, so flip the lead's flag
-    // to keep the lead record and the payout ledger in agreement.
-    if (payment_type === 'one_time') {
+    // to keep the lead record and the payout ledger in agreement. A
+    // "nothing due" marker is not a settlement, so it leaves the flag alone.
+    if (payment_type === 'one_time' && !nothingDue) {
       await supabase
         .from('leads')
         .update({ referral_paid: true })
@@ -121,7 +133,7 @@ export async function DELETE(request: NextRequest) {
     // Reopen the one-time bonus if this was the payment that settled it.
     const { data: record } = await supabase
       .from('referral_payment_records')
-      .select('lead_id, payment_type')
+      .select('lead_id, payment_type, no_payment_due')
       .eq('id', id)
       .single()
 
@@ -134,7 +146,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    if (record?.payment_type === 'one_time' && record.lead_id) {
+    // Only a real settlement flipped the flag, so only that should reverse it.
+    if (record?.payment_type === 'one_time' && !record.no_payment_due && record.lead_id) {
       await supabase
         .from('leads')
         .update({ referral_paid: false })

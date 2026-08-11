@@ -37,6 +37,7 @@ interface AwaitingItem {
   leadId: string
   businessName: string
   partnerName: string
+  partnerId: string | null
   percentage: number | null
   repName: string | null
 }
@@ -130,6 +131,7 @@ export function ReferralsClient({
               leadId:       lead.id,
               businessName: base.businessName,
               partnerName,
+              partnerId:    base.partnerId,
               percentage:   pct,
               repName:      base.repName,
             })
@@ -175,10 +177,47 @@ export function ReferralsClient({
     .reduce((s, i) => s + (i.received || 0), 0)
 
   const handleDeletePayment = async (id: string) => {
-    if (!confirm('Delete this payment record? A one-time bonus will go back to unpaid.')) return
+    if (!confirm('Delete this record? A one-time bonus will go back to unpaid.')) return
     const res = await fetch(`/api/referrals/payments?id=${id}`, { method: 'DELETE' })
     if (res.ok) router.refresh()
-    else alert('Failed to delete payment')
+    else alert('Failed to delete record')
+  }
+
+  // Closes a period out with nothing owed — the merchant stopped processing,
+  // the residual fell below a threshold, the account closed. Recorded rather
+  // than hidden, so "nothing was due" stays distinguishable from "we forgot".
+  const [markingLeadId, setMarkingLeadId] = useState<string | null>(null)
+
+  const handleNoPaymentDue = async (item: AwaitingItem) => {
+    if (!confirm(`Mark ${item.businessName} as having no payout due for ${MONTHS[month - 1]} ${year}?`)) return
+    setMarkingLeadId(item.leadId)
+    try {
+      const res = await fetch('/api/referrals/payments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id:        item.leadId,
+          partner_id:     item.partnerId,
+          referred_by:    item.partnerName,
+          amount:         0,
+          percentage:     item.percentage,
+          date_paid:      new Date().toISOString().slice(0, 10),
+          payment_type:   'residual',
+          period_year:    year,
+          period_month:   month,
+          no_payment_due: true,
+          notes:          'No payout due for this period',
+        }),
+      })
+      if (res.ok) {
+        router.refresh()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || 'Failed to mark as no payment due')
+      }
+    } finally {
+      setMarkingLeadId(null)
+    }
   }
 
   return (
@@ -356,12 +395,45 @@ export function ReferralsClient({
                   {awaiting.map(item => (
                     <div
                       key={item.leadId}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] text-sm"
+                      className="flex flex-wrap items-center gap-3 justify-between py-2 px-3 rounded-lg bg-white/[0.02] text-sm"
                     >
-                      <span className="text-white truncate">{item.businessName}</span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {item.partnerName} · {item.percentage}%
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-white truncate">{item.businessName}</span>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {item.partnerName} · {item.percentage}%
+                          {item.repName && ` · ${item.repName}`}
+                        </p>
+                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setPayingItem({
+                              leadId:       item.leadId,
+                              businessName: item.businessName,
+                              partnerName:  item.partnerName,
+                              partnerId:    item.partnerId,
+                              type:         'residual',
+                              amount:       0,
+                              percentage:   item.percentage,
+                              received:     null,
+                              processor:    null,
+                              repName:      item.repName,
+                            })}
+                          >
+                            Add Payment
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={markingLeadId === item.leadId}
+                            onClick={() => handleNoPaymentDue(item)}
+                          >
+                            {markingLeadId === item.leadId ? 'Saving...' : 'None Due'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -415,16 +487,24 @@ export function ReferralsClient({
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span
                             className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              p.payment_type === 'one_time'
-                                ? 'bg-blue-500/15 text-blue-300'
-                                : 'bg-green-500/15 text-green-300'
+                              p.no_payment_due
+                                ? 'bg-gray-500/15 text-gray-400'
+                                : p.payment_type === 'one_time'
+                                  ? 'bg-blue-500/15 text-blue-300'
+                                  : 'bg-green-500/15 text-green-300'
                             }`}
                           >
-                            {p.payment_type === 'one_time' ? 'One-Time' : 'Residual'}
+                            {p.no_payment_due
+                              ? 'None Due'
+                              : p.payment_type === 'one_time' ? 'One-Time' : 'Residual'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-white whitespace-nowrap">
-                          {money(Number(p.amount) || 0)}
+                        <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                          {p.no_payment_due ? (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          ) : (
+                            <span className="text-white">{money(Number(p.amount) || 0)}</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {isAdmin && (
