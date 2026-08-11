@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { DollarSign, Users, History, Plus, Check } from 'lucide-react'
+import { DollarSign, Users, History, Plus, Check, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/Button'
@@ -27,8 +27,17 @@ export interface OwedItem {
   type: 'one_time' | 'residual'
   amount: number
   percentage: number | null
-  volume: number | null
-  posSystem: string | null
+  /** What the company received for this deal in the period (residuals only). */
+  received: number | null
+  processor: string | null
+  repName: string | null
+}
+
+interface AwaitingItem {
+  leadId: string
+  businessName: string
+  partnerName: string
+  percentage: number | null
   repName: string | null
 }
 
@@ -36,7 +45,7 @@ interface ReferralsClientProps {
   leads: any[]
   partners: any[]
   payments: any[]
-  posSystems: { name: string; payment_day: number | null }[]
+  receivedByLead: Record<string, { amount: number; processor: string | null }>
   isAdmin: boolean
   year: number
   month: number
@@ -46,7 +55,7 @@ export function ReferralsClient({
   leads,
   partners,
   payments,
-  posSystems,
+  receivedByLead,
   isAdmin,
   year,
   month,
@@ -56,8 +65,15 @@ export function ReferralsClient({
   const [payingItem, setPayingItem] = useState<OwedItem | null>(null)
   const [addingPartner, setAddingPartner] = useState(false)
 
-  // A residual is settled for a given month once a payment record exists for
-  // that lead and period. One-time bonuses use the lead's referral_paid flag.
+  const goToPeriod = (y: number, m: number) => {
+    router.push(`/crm/referrals?year=${y}&month=${m}`)
+  }
+
+  const prevPeriod = () => (month === 1 ? goToPeriod(year - 1, 12) : goToPeriod(year, month - 1))
+  const nextPeriod = () => (month === 12 ? goToPeriod(year + 1, 1) : goToPeriod(year, month + 1))
+
+  // A residual is settled for a period once a payment record exists for that
+  // lead and period. One-time bonuses use the lead's referral_paid flag.
   const paidResidualLeadIds = useMemo(() => {
     const set = new Set<string>()
     for (const p of payments) {
@@ -68,8 +84,9 @@ export function ReferralsClient({
     return set
   }, [payments, year, month])
 
-  const owed = useMemo<OwedItem[]>(() => {
-    const items: OwedItem[] = []
+  const { owed, awaiting } = useMemo(() => {
+    const owedItems: OwedItem[] = []
+    const awaitingItems: AwaitingItem[] = []
 
     for (const lead of leads) {
       const partnerName = (lead.referred_by || '').trim()
@@ -80,7 +97,6 @@ export function ReferralsClient({
         businessName: lead.business_name || 'Untitled',
         partnerName,
         partnerId:    lead.referral_partner_id ?? null,
-        posSystem:    lead.pos_system ?? null,
         repName:      lead.assigned_rep?.name ?? null,
       }
 
@@ -88,26 +104,54 @@ export function ReferralsClient({
         if (lead.referral_paid) continue
         const amount = Number(lead.referral_amount) || 0
         if (amount <= 0) continue
-        items.push({ ...base, type: 'one_time', amount, percentage: null, volume: null })
+        owedItems.push({
+          ...base,
+          type: 'one_time',
+          amount,
+          percentage: null,
+          received: null,
+          processor: null,
+        })
+        continue
       }
 
       if (lead.referral_type === 'residual') {
-        // Residuals only accrue while the client is active and processing.
-        if (lead.status !== 'Active Client') continue
+        const pct = Number(lead.referral_percentage) || 0
+        if (pct <= 0) continue
         if (paidResidualLeadIds.has(lead.id)) continue
-        const pct    = Number(lead.referral_percentage) || 0
-        const volume = Number(lead.monthly_processing_volume) || 0
-        const amount = (volume * pct) / 100
-        if (pct <= 0 || amount <= 0) continue
-        items.push({ ...base, type: 'residual', amount, percentage: pct, volume })
+
+        const received = receivedByLead[lead.id]
+
+        // Payouts come out of money actually received, so nothing is owed until
+        // this deal's residual has been recorded for the period.
+        if (!received || received.amount <= 0) {
+          if (lead.status === 'Active Client') {
+            awaitingItems.push({
+              leadId:       lead.id,
+              businessName: base.businessName,
+              partnerName,
+              percentage:   pct,
+              repName:      base.repName,
+            })
+          }
+          continue
+        }
+
+        owedItems.push({
+          ...base,
+          type: 'residual',
+          amount: (received.amount * pct) / 100,
+          percentage: pct,
+          received: received.amount,
+          processor: received.processor,
+        })
       }
     }
 
-    return items
-  }, [leads, paidResidualLeadIds])
+    return { owed: owedItems, awaiting: awaitingItems }
+  }, [leads, paidResidualLeadIds, receivedByLead])
 
-  // Group by partner — one partner commonly refers several businesses, and the
-  // payout is written as a single cheque per partner.
+  // One partner commonly refers several businesses and is paid a single cheque.
   const byPartner = useMemo(() => {
     const groups: Record<string, OwedItem[]> = {}
     for (const item of owed) {
@@ -126,10 +170,9 @@ export function ReferralsClient({
   const totalOwed    = owed.reduce((s, i) => s + i.amount, 0)
   const oneTimeOwed  = owed.filter(i => i.type === 'one_time').reduce((s, i) => s + i.amount, 0)
   const residualOwed = owed.filter(i => i.type === 'residual').reduce((s, i) => s + i.amount, 0)
-  const totalPaid    = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-
-  const posPaymentDay = (name: string | null) =>
-    posSystems.find(p => p.name === name)?.payment_day ?? null
+  const totalReceived = owed
+    .filter(i => i.type === 'residual')
+    .reduce((s, i) => s + (i.received || 0), 0)
 
   const handleDeletePayment = async (id: string) => {
     if (!confirm('Delete this payment record? A one-time bonus will go back to unpaid.')) return
@@ -157,13 +200,34 @@ export function ReferralsClient({
           }
         />
 
+        {/* Period selector — payouts are normally reconciled a month behind */}
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={prevPeriod}
+            className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.05] transition-all"
+            aria-label="Previous month"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm font-semibold text-white min-w-[140px] text-center">
+            {MONTHS[month - 1]} {year}
+          </span>
+          <button
+            onClick={nextPeriod}
+            className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.05] transition-all"
+            aria-label="Next month"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
         {/* Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           {[
-            { label: 'Total Owed',            value: money(totalOwed),    accent: '#f59e0b' },
-            { label: 'One-Time Bonuses',      value: money(oneTimeOwed),  accent: '#3b82f6' },
-            { label: `Residuals — ${MONTHS[month - 1]}`, value: money(residualOwed), accent: '#10b981' },
-            { label: 'Paid To Date',          value: money(totalPaid),    accent: '#8b5cf6' },
+            { label: 'Total Owed',           value: money(totalOwed),     accent: '#f59e0b' },
+            { label: 'One-Time Bonuses',     value: money(oneTimeOwed),   accent: '#3b82f6' },
+            { label: 'Residual Payouts',     value: money(residualOwed),  accent: '#10b981' },
+            { label: 'Received This Period', value: money(totalReceived), accent: '#8b5cf6' },
           ].map(stat => (
             <GlassCard key={stat.label} animate={false} className="p-4">
               <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
@@ -196,83 +260,114 @@ export function ReferralsClient({
 
         {/* ── Owed Now ─────────────────────────────────────────────────── */}
         {tab === 'owed' && (
-          byPartner.length === 0 ? (
-            <GlassCard className="text-center py-16">
-              <Check size={40} className="mx-auto mb-3 text-green-400 opacity-50" />
-              <p className="text-white font-semibold mb-1">Nothing outstanding</p>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Every referral payout is settled for {MONTHS[month - 1]} {year}.
-              </p>
-            </GlassCard>
-          ) : (
-            <div className="space-y-3">
-              {byPartner.map(group => (
-                <motion.div
-                  key={group.name}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <GlassCard animate={false} className="p-4">
-                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/[0.06]">
-                      <div>
-                        <h3 className="text-white font-semibold">{group.name}</h3>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {group.items.length} business{group.items.length === 1 ? '' : 'es'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-amber-400">{money(group.total)}</p>
-                        <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                          Owed
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {group.items.map(item => (
-                        <div
-                          key={`${item.leadId}-${item.type}`}
-                          className="flex flex-wrap items-center gap-3 justify-between py-2 px-3 rounded-lg bg-white/[0.02]"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm text-white truncate">{item.businessName}</span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  item.type === 'one_time'
-                                    ? 'bg-blue-500/15 text-blue-300'
-                                    : 'bg-green-500/15 text-green-300'
-                                }`}
-                              >
-                                {item.type === 'one_time' ? 'One-Time' : 'Residual'}
-                              </span>
-                            </div>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                              {item.type === 'residual' && item.volume !== null
-                                ? `${money(item.volume)} × ${item.percentage}%`
-                                : 'Bonus'}
-                              {item.posSystem && ` · ${item.posSystem}`}
-                              {item.posSystem && posPaymentDay(item.posSystem) &&
-                                ` (pays day ${posPaymentDay(item.posSystem)})`}
-                              {item.repName && ` · ${item.repName}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-white">{money(item.amount)}</span>
-                            {isAdmin && (
-                              <Button size="sm" variant="secondary" onClick={() => setPayingItem(item)}>
-                                Log Payment
-                              </Button>
-                            )}
-                          </div>
+          <>
+            {byPartner.length === 0 ? (
+              <GlassCard className="text-center py-16">
+                <Check size={40} className="mx-auto mb-3 text-green-400 opacity-50" />
+                <p className="text-white font-semibold mb-1">Nothing outstanding</p>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  No referral payouts are due for {MONTHS[month - 1]} {year}.
+                </p>
+              </GlassCard>
+            ) : (
+              <div className="space-y-3">
+                {byPartner.map(group => (
+                  <motion.div
+                    key={group.name}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <GlassCard animate={false} className="p-4">
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/[0.06]">
+                        <div>
+                          <h3 className="text-white font-semibold">{group.name}</h3>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {group.items.length} business{group.items.length === 1 ? '' : 'es'}
+                          </p>
                         </div>
-                      ))}
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-amber-400">{money(group.total)}</p>
+                          <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                            Owed
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {group.items.map(item => (
+                          <div
+                            key={`${item.leadId}-${item.type}`}
+                            className="flex flex-wrap items-center gap-3 justify-between py-2 px-3 rounded-lg bg-white/[0.02]"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-white truncate">{item.businessName}</span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    item.type === 'one_time'
+                                      ? 'bg-blue-500/15 text-blue-300'
+                                      : 'bg-green-500/15 text-green-300'
+                                  }`}
+                                >
+                                  {item.type === 'one_time' ? 'One-Time' : 'Residual'}
+                                </span>
+                              </div>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {item.type === 'residual' && item.received !== null
+                                  ? `${money(item.received)} received × ${item.percentage}%`
+                                  : 'Bonus'}
+                                {item.processor && ` · ${item.processor}`}
+                                {item.repName && ` · ${item.repName}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-white">{money(item.amount)}</span>
+                              {isAdmin && (
+                                <Button size="sm" variant="secondary" onClick={() => setPayingItem(item)}>
+                                  Log Payment
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Residuals that cannot be calculated until the processor payment
+                for this period is entered — surfaced so they do not look lost */}
+            {awaiting.length > 0 && (
+              <GlassCard animate={false} className="p-4 mt-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock size={15} className="text-amber-400" />
+                  <h3 className="text-white font-semibold text-sm">
+                    Awaiting processor payment ({awaiting.length})
+                  </h3>
+                </div>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  These have an active residual agreement, but no commission has been recorded
+                  for {MONTHS[month - 1]} {year} yet. Enter the processor payment on the
+                  Commissions tab and the payout will calculate here.
+                </p>
+                <div className="space-y-1.5">
+                  {awaiting.map(item => (
+                    <div
+                      key={item.leadId}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] text-sm"
+                    >
+                      <span className="text-white truncate">{item.businessName}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.partnerName} · {item.percentage}%
+                      </span>
                     </div>
-                  </GlassCard>
-                </motion.div>
-              ))}
-            </div>
-          )
+                  ))}
+                </div>
+              </GlassCard>
+            )}
+          </>
         )}
 
         {/* ── History ──────────────────────────────────────────────────── */}

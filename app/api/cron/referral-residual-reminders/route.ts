@@ -3,7 +3,24 @@ import nodemailer from 'nodemailer'
 import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/**
+ * Reminds you to pay referral partners their share of residuals.
+ *
+ * Payouts are a cut of what the processor actually paid the company for a
+ * deal — commission_line_items.amount_from_processor — not a cut of the
+ * merchant's processing volume. Nothing is owed until that month's commission
+ * has been entered, so this reports leads still missing one separately.
+ *
+ * Fires the day after a POS system's payment_day, which is when the money has
+ * landed and the commission would have been recorded.
+ */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -11,28 +28,35 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Use service role (admin) for cron jobs to bypass RLS
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || '',
       { auth: { persistSession: false } }
     )
 
-    // Get today's date in Central Time
+    // Today in Central Time
     const ctFormatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Chicago',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+      year: 'numeric', month: '2-digit', day: '2-digit',
     })
-    const ctDate = ctFormatter.format(new Date())
-    const [month, day, year] = ctDate.split('/')
-    const today = `${year}-${month}-${day}`
-    const dayOfMonth = parseInt(day)
+    const [month, day, year] = ctFormatter.format(new Date()).split('/')
+    const dayOfMonth  = parseInt(day)
+    const thisYear    = parseInt(year)
+    const thisMonth   = parseInt(month)
 
-    console.log(`[Referral Residuals] Checking for payment reminders on day ${dayOfMonth} of the month`)
+    // The processor pays in arrears, so the commission just recorded may be
+    // filed under either the current or the previous month.
+    const prevMonth = thisMonth === 1 ? 12 : thisMonth - 1
+    const prevYear  = thisMonth === 1 ? thisYear - 1 : thisYear
+    const periods = [
+      { year: thisYear, month: thisMonth },
+      { year: prevYear, month: prevMonth },
+    ]
 
-    // Get all POS systems with their payment days
+    // ?force=true skips the day-of-month gate so the reminder can be checked on
+    // demand. Mail goes to your own inbox, never to partners.
+    const force = req.nextUrl.searchParams.get('force') === 'true'
+
     const { data: posSystems, error: posError } = await supabase
       .from('pos_systems')
       .select('name, payment_day')
@@ -44,37 +68,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to query POS systems' }, { status: 500 })
     }
 
-    if (!posSystems || posSystems.length === 0) {
-      return NextResponse.json({ message: 'No POS systems configured', emailsSent: 0 })
-    }
-
-    // ?force=true ignores the day-of-month gate so a reminder can be verified
-    // on demand instead of waiting for the next payment cycle. Still requires
-    // CRON_SECRET, and the mail goes to your own inbox — never to partners.
-    const force = req.nextUrl.searchParams.get('force') === 'true'
-
-    // Find which POS systems have a payment today (send reminder day after payment_day)
-    const posSystemsPayingToday = posSystems.filter(pos => {
+    const posPayingToday = (posSystems ?? []).filter(pos => {
       if (!pos.payment_day) return false
       if (force) return true
       const reminderDay = pos.payment_day === 31 ? 1 : pos.payment_day + 1
       return dayOfMonth === reminderDay
     })
 
-    if (posSystemsPayingToday.length === 0) {
+    if (posPayingToday.length === 0) {
       return NextResponse.json({ message: 'No POS systems paying today', emailsSent: 0 })
     }
 
-    console.log(`[Referral Residuals] Reminders due for: ${posSystemsPayingToday.map(p => p.name).join(', ')}`)
+    const posNames = posPayingToday.map(p => p.name)
 
-    // Find all leads with active residual referrals for POS systems paying today
-    const posNamesPayingToday = posSystemsPayingToday.map(p => p.name)
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
-      .select('id, business_name, referred_by, referral_percentage, referral_type, monthly_processing_volume, pos_system, status')
+      .select('id, business_name, referred_by, referral_percentage, pos_system')
       .eq('referral_type', 'residual')
-      .eq('status', 'Active Client')
-      .in('pos_system', posNamesPayingToday)
+      .in('pos_system', posNames)
       .not('referred_by', 'is', null)
       .not('referral_percentage', 'is', null)
 
@@ -84,29 +95,109 @@ export async function GET(req: NextRequest) {
     }
 
     if (!leads || leads.length === 0) {
-      return NextResponse.json({ message: 'No residual referrals due today', emailsSent: 0 })
+      return NextResponse.json({ message: 'No residual referrals for these systems', emailsSent: 0 })
     }
 
-    // Group by referred_by person
-    const leadsByReferrer: Record<string, any[]> = {}
-    for (const lead of leads) {
-      if (!lead.referred_by) continue
-      if (!leadsByReferrer[lead.referred_by]) {
-        leadsByReferrer[lead.referred_by] = []
+    const leadIds = leads.map(l => l.id)
+
+    // Commission periods → what was actually received per deal
+    const { data: records } = await supabase
+      .from('commission_records')
+      .select('id, year, month')
+      .or(periods.map(p => `and(year.eq.${p.year},month.eq.${p.month})`).join(','))
+
+    const periodByRecordId = new Map((records ?? []).map(r => [r.id, { year: r.year, month: r.month }]))
+    const recordIds = [...periodByRecordId.keys()]
+
+    let lineItems: any[] = []
+    if (recordIds.length > 0) {
+      const { data } = await supabase
+        .from('commission_line_items')
+        .select('lead_id, processor, amount_from_processor, commission_record_id')
+        .in('commission_record_id', recordIds)
+        .in('lead_id', leadIds)
+      lineItems = data ?? []
+    }
+
+    // A split deal repeats amount_from_processor per rep — take the max, not
+    // the sum, or the received figure doubles. Keyed by lead + period.
+    const received = new Map<string, { leadId: string; year: number; month: number; amount: number; processor: string | null }>()
+    for (const item of lineItems) {
+      const period = periodByRecordId.get(item.commission_record_id)
+      if (!period || !item.lead_id) continue
+      const key = `${item.lead_id}:${period.year}:${period.month}`
+      const amount = Number(item.amount_from_processor) || 0
+      const existing = received.get(key)
+      if (!existing || amount > existing.amount) {
+        received.set(key, {
+          leadId: item.lead_id, year: period.year, month: period.month,
+          amount, processor: item.processor ?? null,
+        })
       }
-      leadsByReferrer[lead.referred_by].push(lead)
     }
 
-    // Get SMTP config
-    const { data: adminUsers, error: adminError } = await supabase
+    // Exclude anything already paid out
+    const { data: alreadyPaid } = await supabase
+      .from('referral_payment_records')
+      .select('lead_id, period_year, period_month')
+      .in('lead_id', leadIds)
+      .not('period_year', 'is', null)
+
+    const paidKeys = new Set(
+      (alreadyPaid ?? []).map(p => `${p.lead_id}:${p.period_year}:${p.period_month}`)
+    )
+
+    const leadById = new Map(leads.map(l => [l.id, l]))
+
+    interface Owed {
+      business: string; partner: string; period: string
+      receivedAmount: number; percentage: number; owedAmount: number; processor: string | null
+    }
+    const owedByPartner: Record<string, Owed[]> = {}
+    const awaitingByPartner: Record<string, string[]> = {}
+
+    for (const [key, entry] of received) {
+      if (paidKeys.has(key)) continue
+      if (entry.amount <= 0) continue
+      const lead = leadById.get(entry.leadId)
+      if (!lead) continue
+
+      const partner = (lead.referred_by || '').trim()
+      const pct = Number(lead.referral_percentage) || 0
+      if (!partner || pct <= 0) continue
+
+      if (!owedByPartner[partner]) owedByPartner[partner] = []
+      owedByPartner[partner].push({
+        business:       lead.business_name || 'Untitled',
+        partner,
+        period:         `${MONTHS[entry.month - 1]} ${entry.year}`,
+        receivedAmount: entry.amount,
+        percentage:     pct,
+        owedAmount:     (entry.amount * pct) / 100,
+        processor:      entry.processor,
+      })
+    }
+
+    // Leads with a residual agreement but no commission recorded for either
+    // period — flagged so a missing entry does not silently skip a payout.
+    for (const lead of leads) {
+      const hasAny = periods.some(p => received.has(`${lead.id}:${p.year}:${p.month}`))
+      if (hasAny) continue
+      const partner = (lead.referred_by || '').trim()
+      if (!partner) continue
+      if (!awaitingByPartner[partner]) awaitingByPartner[partner] = []
+      awaitingByPartner[partner].push(lead.business_name || 'Untitled')
+    }
+
+    if (Object.keys(owedByPartner).length === 0 && Object.keys(awaitingByPartner).length === 0) {
+      return NextResponse.json({ message: 'Nothing to report', emailsSent: 0 })
+    }
+
+    // SMTP from any admin
+    const { data: adminUsers } = await supabase
       .from('users')
       .select('id, smtp_host, smtp_port, smtp_user, smtp_pass, name, role')
       .in('role', ['owner', 'vp_operations'])
-
-    if (adminError) {
-      console.error('[Referral Residuals] Admin query error:', adminError)
-      return NextResponse.json({ error: 'Failed to get admin config' }, { status: 500 })
-    }
 
     const smtpConfig = adminUsers?.find(u => u.smtp_host && u.smtp_user && u.smtp_pass)
     if (!smtpConfig) {
@@ -118,81 +209,85 @@ export async function GET(req: NextRequest) {
       host: smtpConfig.smtp_host,
       port: smtpConfig.smtp_port || 587,
       secure: false,
-      auth: {
-        user: smtpConfig.smtp_user,
-        pass: smtpConfig.smtp_pass,
-      },
+      auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_pass },
     })
 
+    const fmt = (n: number) =>
+      `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
     let emailsSent = 0
+    const partnersToEmail = new Set([
+      ...Object.keys(owedByPartner),
+      ...Object.keys(awaitingByPartner),
+    ])
 
-    // Send reminder for each referrer
-    for (const [referrerName, referredLeads] of Object.entries(leadsByReferrer)) {
-      // Calculate total owed
-      let totalOwed = 0
-      const leadDetails: Array<{ name: string; pos: string; percentage: number; volume: number; estimated: number }> = []
+    for (const partner of partnersToEmail) {
+      const rows     = owedByPartner[partner] ?? []
+      const awaiting = awaitingByPartner[partner] ?? []
+      const total    = rows.reduce((s, r) => s + r.owedAmount, 0)
 
-      for (const lead of referredLeads) {
-        const volume = lead.monthly_processing_volume || 0
-        const percentage = lead.referral_percentage || 0
-        const estimated = (volume * percentage) / 100
+      let html = `<h2 style="color:#10b981;">Referral Payment Reminder</h2>`
+      html += `<p>Hi ${smtpConfig.name},</p>`
 
-        totalOwed += estimated
-        leadDetails.push({
-          name: lead.business_name || 'Untitled',
-          pos: lead.pos_system || '—',
-          percentage,
-          volume,
-          estimated,
-        })
+      if (rows.length > 0) {
+        html += `<p>You owe <strong>${partner}</strong> their share of residuals received:</p>`
+        html += `<table style="width:100%;border-collapse:collapse;margin:20px 0;">`
+        html += `<tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
+                   <th style="padding:10px;text-align:left;">Business</th>
+                   <th style="padding:10px;text-align:left;">Period</th>
+                   <th style="padding:10px;text-align:right;">You Received</th>
+                   <th style="padding:10px;text-align:center;">Share</th>
+                   <th style="padding:10px;text-align:right;">Owed</th>
+                 </tr>`
+        for (const r of rows) {
+          html += `<tr style="border-bottom:1px solid #e5e7eb;">
+                     <td style="padding:10px;">${r.business}${r.processor ? ` <span style="color:#9ca3af;">(${r.processor})</span>` : ''}</td>
+                     <td style="padding:10px;">${r.period}</td>
+                     <td style="padding:10px;text-align:right;">${fmt(r.receivedAmount)}</td>
+                     <td style="padding:10px;text-align:center;">${r.percentage}%</td>
+                     <td style="padding:10px;text-align:right;font-weight:bold;">${fmt(r.owedAmount)}</td>
+                   </tr>`
+        }
+        html += `</table>`
+        html += `<p style="background:#f3f4f6;padding:12px;border-radius:6px;font-weight:bold;">Total Owed: ${fmt(total)}</p>`
       }
 
-      // Build email
-      let emailBody = `<h2 style="color: #10b981;">💰 Residual Referral Payment Reminder</h2>`
-      emailBody += `<p>Hi ${smtpConfig.name},</p>`
-      emailBody += `<p>Monthly residual payments to <strong>${referrerName}</strong> are due today. Here's the breakdown:</p>`
-      emailBody += `<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">`
-      emailBody += `<tr style="background: #f3f4f6; border-bottom: 1px solid #e5e7eb;">`
-      emailBody += `<th style="padding: 10px; text-align: left;">Business</th>`
-      emailBody += `<th style="padding: 10px; text-align: left;">POS System</th>`
-      emailBody += `<th style="padding: 10px; text-align: right;">Monthly Volume</th>`
-      emailBody += `<th style="padding: 10px; text-align: center;">%</th>`
-      emailBody += `<th style="padding: 10px; text-align: right;">Estimated</th>`
-      emailBody += `</tr>`
-
-      for (const lead of leadDetails) {
-        emailBody += `<tr style="border-bottom: 1px solid #e5e7eb;">`
-        emailBody += `<td style="padding: 10px;">${lead.name}</td>`
-        emailBody += `<td style="padding: 10px;">${lead.pos}</td>`
-        emailBody += `<td style="padding: 10px; text-align: right;">$${lead.volume.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`
-        emailBody += `<td style="padding: 10px; text-align: center;">${lead.percentage}%</td>`
-        emailBody += `<td style="padding: 10px; text-align: right; font-weight: bold;">$${lead.estimated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`
-        emailBody += `</tr>`
+      if (awaiting.length > 0) {
+        html += `<div style="background:#fffbeb;border:1px solid #fcd34d;padding:12px;border-radius:6px;margin:16px 0;">
+                   <p style="margin:0 0 6px 0;font-weight:bold;color:#92400e;">Awaiting commission entry</p>
+                   <p style="margin:0 0 6px 0;font-size:13px;color:#92400e;">
+                     ${partner} has a residual agreement on these, but no commission has been
+                     recorded yet, so the payout cannot be calculated:
+                   </p>
+                   <ul style="margin:0;padding-left:18px;font-size:13px;color:#92400e;">
+                     ${awaiting.map(b => `<li>${b}</li>`).join('')}
+                   </ul>
+                 </div>`
       }
 
-      emailBody += `</table>`
-      emailBody += `<p style="background: #f3f4f6; padding: 12px; border-radius: 6px; font-weight: bold;">Total Owed: $${totalOwed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>`
-      emailBody += `<p style="font-size: 12px; color: #666; margin-top: 20px;">Log payment in Settings → Referral Program when complete.</p>`
+      html += `<p style="font-size:12px;color:#666;margin-top:20px;">Log payments under CRM → Referrals.</p>`
 
       try {
-        console.log(`[Referral Residuals] Sending reminder for ${referrerName}: $${totalOwed.toFixed(2)}`)
         await transporter.sendMail({
           from: smtpConfig.smtp_user,
-          to: smtpConfig.smtp_user,
-          subject: `💰 Referral Payment Due to ${referrerName} — $${totalOwed.toFixed(2)}`,
-          html: emailBody,
+          to:   smtpConfig.smtp_user,
+          subject: rows.length > 0
+            ? `Referral Payment Due to ${partner} — ${fmt(total)}`
+            : `Referral: commission entry needed for ${partner}`,
+          html,
         })
         emailsSent++
       } catch (err) {
-        console.error(`[Referral Residuals] Failed to send email:`, err)
+        console.error(`[Referral Residuals] Failed to send email for ${partner}:`, err)
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Sent ${emailsSent} referral payment reminder${emailsSent === 1 ? '' : 's'}`,
+      message: `Sent ${emailsSent} referral reminder${emailsSent === 1 ? '' : 's'}`,
       emailsSent,
-      leadersProcessed: Object.keys(leadsByReferrer).length,
+      partnersOwed: Object.keys(owedByPartner).length,
+      partnersAwaitingEntry: Object.keys(awaitingByPartner).length,
     })
   } catch (err) {
     console.error('[Referral Residuals] Cron job failed:', err)

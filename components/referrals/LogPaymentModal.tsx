@@ -19,8 +19,8 @@ interface LogPaymentModalProps {
 }
 
 export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPaymentModalProps) {
-  // Amount is prefilled from the calculation but editable — residuals are an
-  // estimate off monthly volume and the real processor statement often differs.
+  // Prefilled from the calculated cut but editable, for rounding or an agreed
+  // adjustment on a particular month.
   const [amount, setAmount]     = useState(item.amount.toFixed(2))
   const [datePaid, setDatePaid] = useState(new Date().toISOString().slice(0, 10))
   const [notes, setNotes]       = useState('')
@@ -97,10 +97,15 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
                 <span className="text-white">{MONTHS[month - 1]} {year}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span style={{ color: 'var(--text-muted)' }}>Calculated</span>
+                <span style={{ color: 'var(--text-muted)' }}>Received</span>
                 <span className="text-white">
-                  ${item.volume?.toLocaleString('en-US', { minimumFractionDigits: 2 })} × {item.percentage}%
+                  ${item.received?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {item.processor && ` from ${item.processor}`}
                 </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span style={{ color: 'var(--text-muted)' }}>Partner share</span>
+                <span className="text-white">{item.percentage}%</span>
               </div>
             </>
           )}
@@ -117,7 +122,7 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
             onChange={e => setAmount(e.target.value)}
             hint={
               item.type === 'residual'
-                ? 'Prefilled from monthly volume — adjust to the actual statement.'
+                ? "Your partner's cut of what the processor paid you for this deal."
                 : undefined
             }
           />
