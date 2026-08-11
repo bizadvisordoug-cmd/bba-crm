@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
-      .select('id, business_name, referred_by, referral_percentage, pos_system')
+      .select('id, business_id, business_name, referred_by, referral_percentage, pos_system')
       .eq('referral_type', 'residual')
       .in('pos_system', posNames)
       .not('referred_by', 'is', null)
@@ -99,6 +99,12 @@ export async function GET(req: NextRequest) {
     }
 
     const leadIds = leads.map(l => l.id)
+    // Commission line items are attached to a business by the Commissions UI,
+    // which never sets lead_id — match on either.
+    const businessIds = leads.map(l => l.business_id).filter(Boolean)
+    const leadIdByBusinessId = new Map(
+      leads.filter(l => l.business_id).map(l => [l.business_id as string, l.id])
+    )
 
     // Commission periods → what was actually received per deal
     const { data: records } = await supabase
@@ -111,11 +117,16 @@ export async function GET(req: NextRequest) {
 
     let lineItems: any[] = []
     if (recordIds.length > 0) {
+      const orFilters = [
+        leadIds.length     > 0 ? `lead_id.in.(${leadIds.join(',')})`         : null,
+        businessIds.length > 0 ? `business_id.in.(${businessIds.join(',')})` : null,
+      ].filter(Boolean).join(',')
+
       const { data } = await supabase
         .from('commission_line_items')
-        .select('lead_id, processor, amount_from_processor, commission_record_id')
+        .select('lead_id, business_id, processor, amount_from_processor, commission_record_id')
         .in('commission_record_id', recordIds)
-        .in('lead_id', leadIds)
+        .or(orFilters)
       lineItems = data ?? []
     }
 
@@ -124,13 +135,15 @@ export async function GET(req: NextRequest) {
     const received = new Map<string, { leadId: string; year: number; month: number; amount: number; processor: string | null }>()
     for (const item of lineItems) {
       const period = periodByRecordId.get(item.commission_record_id)
-      if (!period || !item.lead_id) continue
-      const key = `${item.lead_id}:${period.year}:${period.month}`
+      const leadId = item.lead_id
+        ?? (item.business_id ? leadIdByBusinessId.get(item.business_id) : undefined)
+      if (!period || !leadId) continue
+      const key = `${leadId}:${period.year}:${period.month}`
       const amount = Number(item.amount_from_processor) || 0
       const existing = received.get(key)
       if (!existing || amount > existing.amount) {
         received.set(key, {
-          leadId: item.lead_id, year: period.year, month: period.month,
+          leadId, year: period.year, month: period.month,
           amount, processor: item.processor ?? null,
         })
       }

@@ -29,7 +29,7 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
   const leadQuery = supabase
     .from('leads')
     .select(`
-      id, business_name, referred_by, referral_partner_id, referral_type,
+      id, business_id, business_name, referred_by, referral_partner_id, referral_type,
       referral_amount, referral_percentage, referral_paid,
       monthly_processing_volume, pos_system, status, assigned_rep_id,
       assigned_rep:users(id, name)
@@ -40,7 +40,14 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
 
   if (leadsError) console.error('[ReferralsPage] leads query error:', leadsError)
 
-  const leadIds = (leads ?? []).map(l => l.id)
+  const leadIds     = (leads ?? []).map(l => l.id)
+  // The Commissions UI attaches a line item to a BUSINESS — its picker never
+  // sets lead_id, so matching on lead_id alone finds nothing. Bridge through
+  // leads.business_id, and still honour lead_id when something does set it.
+  const businessIds = (leads ?? []).map(l => l.business_id).filter(Boolean)
+  const leadIdByBusinessId = new Map(
+    (leads ?? []).filter(l => l.business_id).map(l => [l.business_id as string, l.id])
+  )
 
   // How much the company actually received per deal for this period. Referral
   // payouts are a cut of this, not of the merchant's processing volume.
@@ -56,12 +63,17 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
   const recordIds = (periodRecords ?? []).map(r => r.id)
 
   let lineItems: any[] = []
-  if (recordIds.length > 0 && leadIds.length > 0) {
+  if (recordIds.length > 0 && (leadIds.length > 0 || businessIds.length > 0)) {
+    const orFilters = [
+      leadIds.length     > 0 ? `lead_id.in.(${leadIds.join(',')})`         : null,
+      businessIds.length > 0 ? `business_id.in.(${businessIds.join(',')})` : null,
+    ].filter(Boolean).join(',')
+
     const { data, error: lineError } = await supabase
       .from('commission_line_items')
-      .select('lead_id, processor, amount_from_processor')
+      .select('lead_id, business_id, processor, amount_from_processor')
       .in('commission_record_id', recordIds)
-      .in('lead_id', leadIds)
+      .or(orFilters)
     if (lineError) console.error('[ReferralsPage] line items query error:', lineError)
     lineItems = data ?? []
   }
@@ -71,11 +83,13 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
   // received amount would be double counted.
   const receivedByLead: Record<string, { amount: number; processor: string | null }> = {}
   for (const item of lineItems) {
-    if (!item.lead_id) continue
+    const leadId = item.lead_id
+      ?? (item.business_id ? leadIdByBusinessId.get(item.business_id) : undefined)
+    if (!leadId) continue
     const amount = Number(item.amount_from_processor) || 0
-    const existing = receivedByLead[item.lead_id]
+    const existing = receivedByLead[leadId]
     if (!existing || amount > existing.amount) {
-      receivedByLead[item.lead_id] = { amount, processor: item.processor ?? null }
+      receivedByLead[leadId] = { amount, processor: item.processor ?? null }
     }
   }
 
