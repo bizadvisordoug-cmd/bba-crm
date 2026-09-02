@@ -173,6 +173,11 @@ export function LeadDrawer({ lead, open, onClose, onUpdate, onDelete, reps, isAd
       // Strip join sub-objects — these are not columns in leads and cause a PostgREST error
       const { assigned_rep: _rep, owner: _owner, business: _biz, ...payload } = form
 
+      // A cleared date input yields '' — Postgres rejects that for a date column, so send null
+      for (const key of ['last_contacted', 'next_follow_up', 'install_date', 'contract_expiration'] as const) {
+        if (payload[key] === '') (payload as Record<string, unknown>)[key] = null
+      }
+
       // Create new person if needed, resolve owner_id
       if (ownerMode === 'create') {
         if (!newOwner.name.trim()) { setSaveError('Owner name is required'); setSaving(false); return }
