@@ -46,6 +46,9 @@ export function TasksClient({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [allTasks, setAllTasks] = useState(tasks)
+  // Admins receive every rep's tasks from the server; default to their own so
+  // the page matches the "My Tasks" nav label, with the team view a click away
+  const [scope, setScope] = useState<'mine' | 'all'>('mine')
 
   const openCreateModal = () => setIsCreateModalOpen(true)
   const closeCreateModal = () => setIsCreateModalOpen(false)
@@ -104,8 +107,11 @@ export function TasksClient({
     }
   }
 
-  const incompleteTasks = allTasks.filter((t: any) => !t.completed)
-  const completedTasks = allTasks.filter((t: any) => t.completed)
+  const visibleTasks = isAdmin && scope === 'all'
+    ? allTasks
+    : allTasks.filter((t: any) => t.assigned_to === currentUserId)
+  const incompleteTasks = visibleTasks.filter((t: any) => !t.completed)
+  const completedTasks = visibleTasks.filter((t: any) => t.completed)
 
   const renderTaskTable = (taskList: any[], showCompleted: boolean) => (
     <div className="rounded-lg border overflow-hidden">
@@ -188,12 +194,30 @@ export function TasksClient({
             <h1 className="text-3xl font-bold">Tasks</h1>
             <p className="text-slate-600 mt-2">Manage your tasks and follow-ups</p>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            + New Task
-          </button>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <div className="flex rounded-lg border overflow-hidden text-sm font-medium">
+                <button
+                  onClick={() => setScope('mine')}
+                  className={`px-3 py-2 ${scope === 'mine' ? 'bg-slate-600 text-white' : 'hover:bg-slate-50'}`}
+                >
+                  My tasks
+                </button>
+                <button
+                  onClick={() => setScope('all')}
+                  className={`px-3 py-2 border-l ${scope === 'all' ? 'bg-slate-600 text-white' : 'hover:bg-slate-50'}`}
+                >
+                  All tasks
+                </button>
+              </div>
+            )}
+            <button
+              onClick={openCreateModal}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              + New Task
+            </button>
+          </div>
         </div>
 
         <div>

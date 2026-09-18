@@ -21,7 +21,8 @@ export default async function DashboardPage() {
     .select('pipeline_stage, status, contract_expiration, assigned_rep_id')
     .eq('assigned_rep_id', user!.id)
 
-  // Tasks due today/this week
+  // Tasks due today/this week — personal, like the lead counts above, even
+  // for admins: this is the user's own to-do list, not the team's
   const today = new Date()
   const endOfDay = new Date(today); endOfDay.setHours(23, 59, 59)
   const endOfWeek = new Date(today); endOfWeek.setDate(today.getDate() + 7)
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
     .lte('due_date', endOfWeek.toISOString())
     .order('due_date', { ascending: true })
     .limit(20)
-  if (!isAdmin) taskQuery.eq('assigned_to', user!.id)
+    .eq('assigned_to', user!.id)
   const { data: tasks } = await taskQuery
 
   // Recent activity
