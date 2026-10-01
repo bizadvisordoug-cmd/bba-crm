@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   DollarSign, TrendingUp, CheckCircle, Clock, ChevronRight,
-  Plus, X, Save, AlertCircle, Trash2, Building2,
+  Plus, X, Save, AlertCircle, Trash2, Building2, Edit3,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -100,6 +100,8 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
   })
   const [addItemSaving, setAddItemSaving] = useState(false)
   const [addItemError, setAddItemError] = useState('')
+  // Non-null while the same form is being used to correct an existing item
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
   const [confirmDeleteRecordId, setConfirmDeleteRecordId] = useState<string | null>(null)
   const [deletingRecord, setDeletingRecord] = useState(false)
@@ -132,8 +134,7 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
   const handleSelectRecord = (record: CommissionRecord & { rep: User }) => {
     setSelectedRecord(record)
     setLineItems([])
-    setShowAddItem(false)
-    setAddItemError('')
+    closeItemForm()
     setMarkPaidError('')
     loadLineItems(record.id)
   }
@@ -196,7 +197,28 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
     }
   }
 
-  const handleAddLineItem = async () => {
+  const startEditLineItem = (item: CommissionLineItem) => {
+    setEditingItemId(item.id)
+    setAddItemForm({
+      processor: item.processor,
+      lead_id: item.lead_id ?? '',
+      business_id: item.business_id ?? '',
+      amount_from_processor: item.amount_from_processor.toString(),
+      commission_rate: item.commission_rate.toString(),
+      notes: item.notes ?? '',
+    })
+    setAddItemError('')
+    setShowAddItem(true)
+  }
+
+  const closeItemForm = () => {
+    setShowAddItem(false)
+    setEditingItemId(null)
+    setAddItemError('')
+    setAddItemForm({ processor: '', lead_id: '', business_id: '', amount_from_processor: '', commission_rate: '50', notes: '' })
+  }
+
+  const handleSaveLineItem = async () => {
     if (!selectedRecord) return
     if (!addItemForm.processor) { setAddItemError('Select a processor'); return }
     const amtFromProc = parseFloat(addItemForm.amount_from_processor)
@@ -205,7 +227,7 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
     if (isNaN(rate) || rate <= 0 || rate > 100) { setAddItemError('Enter a valid commission rate (0.01–100)'); return }
     const commissionAmount = amtFromProc * (rate / 100)
 
-    const insertPayload = {
+    const itemPayload = {
       commission_record_id: selectedRecord.id,
       processor: addItemForm.processor,
       lead_id: addItemForm.lead_id || null,
@@ -215,21 +237,24 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
       commission_amount: commissionAmount,
       notes: addItemForm.notes || null,
     }
-    console.log('[CommissionsClient] inserting line item:', insertPayload)
+    console.log('[CommissionsClient] saving line item:', editingItemId ?? '(new)', itemPayload)
 
     setAddItemSaving(true)
     setAddItemError('')
     try {
-      const { data: item, error } = await supabase
-        .from('commission_line_items')
-        .insert(insertPayload)
+      const query = editingItemId
+        ? supabase.from('commission_line_items').update(itemPayload).eq('id', editingItemId)
+        : supabase.from('commission_line_items').insert(itemPayload)
+      const { data: item, error } = await query
         .select('*, lead:leads(id, business_name), business:businesses(id, business_name)')
         .single()
       if (error) {
-        console.error('[CommissionsClient] insert error:', error)
+        console.error('[CommissionsClient] save error:', error)
         throw error
       }
-      setLineItems(prev => [...prev, item as CommissionLineItem])
+      setLineItems(prev => editingItemId
+        ? prev.map(i => i.id === editingItemId ? item as CommissionLineItem : i)
+        : [...prev, item as CommissionLineItem])
 
       // Re-fetch record for updated total_owed (DB trigger updates it)
       const { data: refreshed } = await supabase
@@ -243,10 +268,9 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
         setRecords(prev => prev.map(r => r.id === updated.id ? updated : r))
       }
 
-      setAddItemForm({ processor: '', lead_id: '', business_id: '', amount_from_processor: '', commission_rate: '50', notes: '' })
-      setShowAddItem(false)
+      closeItemForm()
     } catch (err) {
-      setAddItemError(err instanceof Error ? err.message : 'Failed to add line item')
+      setAddItemError(err instanceof Error ? err.message : 'Failed to save line item')
     } finally {
       setAddItemSaving(false)
     }
@@ -534,15 +558,18 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
                 variant="secondary"
                 size="sm"
                 icon={<Plus size={13} />}
-                onClick={() => { setShowAddItem(v => !v); setAddItemError('') }}
+                onClick={() => showAddItem ? closeItemForm() : setShowAddItem(true)}
               >
                 Add Item
               </Button>
             </div>
 
-            {/* Add item form */}
+            {/* Add / edit item form */}
             {showAddItem && (
               <div className="mb-4 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+                {editingItemId && (
+                  <p className="text-xs font-semibold text-white">Edit Line Item</p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <SearchableSelect
@@ -630,10 +657,10 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
                   <p className="text-xs text-red-400">{addItemError}</p>
                 )}
                 <div className="flex gap-2 pt-1">
-                  <Button variant="primary" size="sm" icon={<Save size={13} />} loading={addItemSaving} onClick={handleAddLineItem}>
-                    Save Item
+                  <Button variant="primary" size="sm" icon={<Save size={13} />} loading={addItemSaving} onClick={handleSaveLineItem}>
+                    {editingItemId ? 'Save Changes' : 'Save Item'}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setShowAddItem(false); setAddItemError('') }}>
+                  <Button variant="ghost" size="sm" onClick={closeItemForm}>
                     Cancel
                   </Button>
                 </div>
@@ -689,6 +716,14 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
                               </div>
                               {item.notes && <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.notes}</p>}
                             </div>
+                            <button
+                              onClick={() => startEditLineItem(item)}
+                              className="p-1.5 rounded-lg hover:bg-white/[0.06] hover:text-white transition-colors"
+                              style={{ color: editingItemId === item.id ? '#fff' : 'var(--text-muted)' }}
+                              title="Edit item"
+                            >
+                              <Edit3 size={13} />
+                            </button>
                             <button
                               onClick={() => handleDeleteLineItem(item.id)}
                               className="opacity-0 group-hover/item:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-400"
