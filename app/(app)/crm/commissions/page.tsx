@@ -4,7 +4,11 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { CommissionsClient } from '@/components/commissions/CommissionsClient'
 
-export default async function CommissionsPage() {
+interface PageProps {
+  searchParams: Promise<{ year?: string; month?: string }>
+}
+
+export default async function CommissionsPage({ searchParams }: PageProps) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -20,9 +24,16 @@ export default async function CommissionsPage() {
     redirect('/')
   }
 
+  // Statements are reconciled a month or more behind, and an old one often
+  // needs revisiting, so the period is selectable rather than pinned to today.
+  const params = await searchParams
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
+  const year = Number(params.year) || now.getFullYear()
+  const month = Number(params.month) || now.getMonth() + 1
+
+  // The overdue count is about today, not the period being viewed.
+  const thisYear = now.getFullYear()
+  const thisMonth = now.getMonth() + 1
 
   const [
     { data: records },
@@ -54,7 +65,7 @@ export default async function CommissionsPage() {
       .from('commission_records')
       .select('*', { count: 'exact', head: true })
       .neq('status', 'paid')
-      .or(`year.lt.${year},and(year.eq.${year},month.lt.${month})`),
+      .or(`year.lt.${thisYear},and(year.eq.${thisYear},month.lt.${thisMonth})`),
   ])
 
   if (bizError) console.error('[CommissionsPage] businesses query error:', bizError)

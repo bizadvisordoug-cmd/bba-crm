@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   DollarSign, TrendingUp, CheckCircle, Clock, ChevronRight,
-  Plus, X, Save, AlertCircle, Trash2, Building2, Edit3,
+  Plus, X, Save, AlertCircle, Trash2, Building2, Edit3, ChevronLeft,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -55,7 +56,17 @@ function statusBadge(status: 'pending' | 'partial' | 'paid') {
 
 export function CommissionsClient({ records: initialRecords, processors, reps, businesses, year, month, currentUserId, overdueCount }: CommissionsClientProps) {
   const supabase = createClient()
+  const router = useRouter()
   const MONTH_NAME = MONTH_NAMES[month - 1]
+
+  const goToPeriod = (y: number, m: number) => {
+    router.push(`/crm/commissions?year=${y}&month=${m}`)
+  }
+  const prevPeriod = () => (month === 1 ? goToPeriod(year - 1, 12) : goToPeriod(year, month - 1))
+  const nextPeriod = () => (month === 12 ? goToPeriod(year + 1, 1) : goToPeriod(year, month + 1))
+
+  const now = new Date()
+  const isCurrentPeriod = year === now.getFullYear() && month === now.getMonth() + 1
 
   useEffect(() => {
     console.log('[CommissionsClient] businesses received:', businesses.length, businesses)
@@ -119,6 +130,17 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
     if (!isNaN(amt) && !isNaN(rate)) return amt * (rate / 100)
     return null
   })()
+
+  // Switching period re-renders this same component with fresh props, so the
+  // statement list has to follow the new period rather than keep its first copy.
+  useEffect(() => {
+    setRecords(initialRecords)
+    setSelectedRecord(null)
+    setLineItems([])
+    setShowAddItem(false)
+    setEditingItemId(null)
+    setConfirmDeleteRecordId(null)
+  }, [initialRecords])
 
   const loadLineItems = useCallback(async (recordId: string) => {
     setLoadingItems(true)
@@ -324,8 +346,38 @@ export function CommissionsClient({ records: initialRecords, processors, reps, b
         }
       />
 
-      {/* Alert banners */}
-      {(isPaymentEntryTime && !entryDismissed) && (
+      {/* Period selector — statements are reconciled a month or more behind */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={prevPeriod}
+          className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.05] transition-all"
+          aria-label="Previous month"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm font-semibold text-white min-w-[140px] text-center">
+          {MONTH_NAME} {year}
+        </span>
+        <button
+          onClick={nextPeriod}
+          className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.05] transition-all"
+          aria-label="Next month"
+        >
+          <ChevronRight size={16} />
+        </button>
+        {!isCurrentPeriod && (
+          <button
+            onClick={() => goToPeriod(now.getFullYear(), now.getMonth() + 1)}
+            className="text-xs px-2.5 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.05] transition-all"
+          >
+            This month
+          </button>
+        )}
+      </div>
+
+      {/* Alert banners — the entry nudge is about this month, so it stays out of
+          the way while an earlier period is being reviewed */}
+      {(isPaymentEntryTime && isCurrentPeriod && !entryDismissed) && (
         <div className="flex items-center justify-between gap-4 px-4 py-3 mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.07]">
           <div className="flex items-center gap-3">
             <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />
