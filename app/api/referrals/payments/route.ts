@@ -116,6 +116,66 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Corrects a payout that was entered wrong. Only the figures a mistake lands
+// in are editable — the lead, partner, type and period identify the row and
+// stay put, so the per-period unique index cannot be worked around from here.
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const auth = await requireAdmin(supabase)
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const body = await request.json()
+    const { id, amount, percentage, date_paid, notes } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    }
+    if (!date_paid) {
+      return NextResponse.json({ error: 'date_paid is required' }, { status: 400 })
+    }
+
+    const { data: existing } = await supabase
+      .from('referral_payment_records')
+      .select('no_payment_due')
+      .eq('id', id)
+      .single()
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 })
+    }
+
+    // A "nothing due" marker carries no amount; editing one keeps it at zero.
+    const parsedAmount = existing.no_payment_due ? 0 : Number(amount)
+    if (!existing.no_payment_due && (!isFinite(parsedAmount) || parsedAmount < 0)) {
+      return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from('referral_payment_records')
+      .update({
+        amount:     parsedAmount,
+        percentage: percentage ?? null,
+        date_paid,
+        notes:      notes ?? null,
+      })
+      .eq('id', id)
+      .select('*, lead:leads(id, business_name)')
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('[Referral Payments] PATCH failed:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()

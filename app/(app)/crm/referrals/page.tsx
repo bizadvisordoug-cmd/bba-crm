@@ -54,13 +54,17 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
   //
   // Fetched in two steps rather than one embedded filter: line items carry no
   // period of their own, it lives on the parent commission_record.
-  const { data: periodRecords } = await supabase
+  // Every period, not just the selected one: an unpaid residual from an older
+  // month is the thing most easily lost, so the client needs enough to list
+  // outstanding payouts across all periods without the user paging back.
+  const { data: allRecords } = await supabase
     .from('commission_records')
-    .select('id')
-    .eq('year', year)
-    .eq('month', month)
+    .select('id, year, month')
 
-  const recordIds = (periodRecords ?? []).map(r => r.id)
+  const periodByRecordId = new Map(
+    (allRecords ?? []).map(r => [r.id as string, { year: r.year as number, month: r.month as number }])
+  )
+  const recordIds = (allRecords ?? []).map(r => r.id)
 
   let lineItems: any[] = []
   if (recordIds.length > 0 && (leadIds.length > 0 || businessIds.length > 0)) {
@@ -71,7 +75,7 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
 
     const { data, error: lineError } = await supabase
       .from('commission_line_items')
-      .select('lead_id, business_id, processor, amount_from_processor')
+      .select('commission_record_id, lead_id, business_id, processor, amount_from_processor')
       .in('commission_record_id', recordIds)
       .or(orFilters)
     if (lineError) console.error('[ReferralsPage] line items query error:', lineError)
@@ -81,17 +85,23 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
   // A deal split between reps produces one line item per rep, each repeating
   // the same amount_from_processor. Take the max rather than summing, or the
   // received amount would be double counted.
-  const receivedByLead: Record<string, { amount: number; processor: string | null }> = {}
+  const receivedByPeriod: Record<string, Record<string, { amount: number; processor: string | null }>> = {}
   for (const item of lineItems) {
+    const period = periodByRecordId.get(item.commission_record_id)
+    if (!period) continue
     const leadId = item.lead_id
       ?? (item.business_id ? leadIdByBusinessId.get(item.business_id) : undefined)
     if (!leadId) continue
+    const key = `${period.year}-${period.month}`
+    const byLead = (receivedByPeriod[key] ??= {})
     const amount = Number(item.amount_from_processor) || 0
-    const existing = receivedByLead[leadId]
+    const existing = byLead[leadId]
     if (!existing || amount > existing.amount) {
-      receivedByLead[leadId] = { amount, processor: item.processor ?? null }
+      byLead[leadId] = { amount, processor: item.processor ?? null }
     }
   }
+
+  const receivedByLead = receivedByPeriod[`${year}-${month}`] ?? {}
 
   const [{ data: partners }, { data: payments }] = await Promise.all([
     supabase
@@ -113,6 +123,7 @@ export default async function ReferralsPage({ searchParams }: PageProps) {
       partners={(partners ?? []) as any}
       payments={(payments ?? []) as any}
       receivedByLead={receivedByLead}
+      receivedByPeriod={receivedByPeriod}
       isAdmin={isAdmin}
       year={year}
       month={month}

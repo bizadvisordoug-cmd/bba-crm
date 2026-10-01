@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { DollarSign, Users, History, Plus, Check, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { DollarSign, Users, History, Plus, Check, ChevronLeft, ChevronRight, Clock, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { Button } from '@/components/ui/Button'
-import { LogPaymentModal } from '@/components/referrals/LogPaymentModal'
+import { LogPaymentModal, type EditingPayment } from '@/components/referrals/LogPaymentModal'
 import { AddPartnerModal } from '@/components/referrals/AddPartnerModal'
 
 const MONTHS = [
@@ -42,14 +42,29 @@ interface AwaitingItem {
   repName: string | null
 }
 
+/** An owed item plus the period it belongs to — the top list spans periods. */
+interface OutstandingItem extends OwedItem {
+  periodYear: number | null
+  periodMonth: number | null
+}
+
 interface ReferralsClientProps {
   leads: any[]
   partners: any[]
   payments: any[]
   receivedByLead: Record<string, { amount: number; processor: string | null }>
+  receivedByPeriod: Record<string, Record<string, { amount: number; processor: string | null }>>
   isAdmin: boolean
   year: number
   month: number
+}
+
+/** What the modal is working on: an item, the period it posts to, and the row being corrected. */
+interface PaymentTarget {
+  item: OwedItem
+  year: number
+  month: number
+  editing?: EditingPayment | null
 }
 
 export function ReferralsClient({
@@ -57,13 +72,14 @@ export function ReferralsClient({
   partners,
   payments,
   receivedByLead,
+  receivedByPeriod,
   isAdmin,
   year,
   month,
 }: ReferralsClientProps) {
   const router = useRouter()
   const [tab, setTab] = useState<'owed' | 'history' | 'partners'>('owed')
-  const [payingItem, setPayingItem] = useState<OwedItem | null>(null)
+  const [payingItem, setPayingItem] = useState<PaymentTarget | null>(null)
   const [addingPartner, setAddingPartner] = useState(false)
 
   const goToPeriod = (y: number, m: number) => {
@@ -153,6 +169,82 @@ export function ReferralsClient({
     return { owed: owedItems, awaiting: awaitingItems }
   }, [leads, paidResidualLeadIds, receivedByLead])
 
+  // Everything still open, across every period — so an unpaid residual from
+  // three months ago is visible without paging back to find it. One-time
+  // bonuses carry no period and are outstanding until the flag flips.
+  const outstanding = useMemo(() => {
+    const settled = new Set<string>()
+    for (const p of payments) {
+      if (p.lead_id && p.period_year && p.period_month) {
+        settled.add(`${p.lead_id}:${p.period_year}:${p.period_month}`)
+      }
+    }
+
+    const items: OutstandingItem[] = []
+
+    for (const lead of leads) {
+      const partnerName = (lead.referred_by || '').trim()
+      if (!partnerName) continue
+
+      const base = {
+        leadId:       lead.id,
+        businessName: lead.business_name || 'Untitled',
+        partnerName,
+        partnerId:    lead.referral_partner_id ?? null,
+        repName:      lead.assigned_rep?.name ?? null,
+      }
+
+      if (lead.referral_type === 'one_time') {
+        if (lead.referral_paid) continue
+        const amount = Number(lead.referral_amount) || 0
+        if (amount <= 0) continue
+        items.push({
+          ...base,
+          type: 'one_time',
+          amount,
+          percentage: null,
+          received: null,
+          processor: null,
+          periodYear: null,
+          periodMonth: null,
+        })
+        continue
+      }
+
+      if (lead.referral_type !== 'residual') continue
+      const pct = Number(lead.referral_percentage) || 0
+      if (pct <= 0) continue
+
+      for (const [key, byLead] of Object.entries(receivedByPeriod)) {
+        const received = byLead[lead.id]
+        if (!received || received.amount <= 0) continue
+        const [py, pm] = key.split('-').map(Number)
+        if (settled.has(`${lead.id}:${py}:${pm}`)) continue
+        items.push({
+          ...base,
+          type: 'residual',
+          amount: (received.amount * pct) / 100,
+          percentage: pct,
+          received: received.amount,
+          processor: received.processor,
+          periodYear: py,
+          periodMonth: pm,
+        })
+      }
+    }
+
+    // Oldest period first — those are the ones at risk of being forgotten.
+    return items.sort((a, b) => {
+      if (a.periodYear === null) return 1
+      if (b.periodYear === null) return -1
+      return a.periodYear - b.periodYear || (a.periodMonth ?? 0) - (b.periodMonth ?? 0)
+    })
+  }, [leads, payments, receivedByPeriod])
+
+  const outstandingTotal = outstanding.reduce((s, i) => s + i.amount, 0)
+  const periodLabel = (i: OutstandingItem) =>
+    i.periodYear && i.periodMonth ? `${MONTHS[i.periodMonth - 1]} ${i.periodYear}` : 'Bonus'
+
   // One partner commonly refers several businesses and is paid a single cheque.
   const byPartner = useMemo(() => {
     const groups: Record<string, OwedItem[]> = {}
@@ -175,6 +267,33 @@ export function ReferralsClient({
   const totalReceived = owed
     .filter(i => i.type === 'residual')
     .reduce((s, i) => s + (i.received || 0), 0)
+
+  // Reuses the log-payment modal: same fields, pointed at an existing row.
+  const startEditPayment = (p: any) => {
+    setPayingItem({
+      item: {
+        leadId:       p.lead_id,
+        businessName: p.lead?.business_name || 'Untitled',
+        partnerName:  p.referred_by,
+        partnerId:    p.partner_id ?? null,
+        type:         p.payment_type === 'one_time' ? 'one_time' : 'residual',
+        amount:       Number(p.amount) || 0,
+        percentage:   p.percentage != null ? Number(p.percentage) : null,
+        received:     null,
+        processor:    null,
+        repName:      null,
+      },
+      year:  p.period_year  ?? year,
+      month: p.period_month ?? month,
+      editing: {
+        id:             p.id,
+        amount:         Number(p.amount) || 0,
+        date_paid:      p.date_paid,
+        notes:          p.notes ?? null,
+        no_payment_due: !!p.no_payment_due,
+      },
+    })
+  }
 
   const handleDeletePayment = async (id: string) => {
     if (!confirm('Delete this record? A one-time bonus will go back to unpaid.')) return
@@ -238,6 +357,68 @@ export function ReferralsClient({
             ) : undefined
           }
         />
+
+        {/* Everything open, regardless of period — the first thing on screen so
+            an old unpaid residual does not need hunting for month by month */}
+        {outstanding.length > 0 && (
+          <GlassCard animate={false} className="p-4 mb-4 border-amber-500/20">
+            <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-white/[0.06] flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="text-amber-400" />
+                <h3 className="text-white font-semibold text-sm">
+                  All open payouts ({outstanding.length})
+                </h3>
+              </div>
+              <p className="text-lg font-bold text-amber-400">{money(outstandingTotal)}</p>
+            </div>
+            <div className="space-y-1.5">
+              {outstanding.map(item => (
+                <div
+                  key={`${item.leadId}-${item.type}-${item.periodYear ?? 'x'}-${item.periodMonth ?? 'x'}`}
+                  className="flex flex-wrap items-center gap-3 justify-between py-2 px-3 rounded-lg bg-white/[0.02]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-white truncate">{item.businessName}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          item.type === 'one_time'
+                            ? 'bg-blue-500/15 text-blue-300'
+                            : 'bg-amber-500/15 text-amber-300'
+                        }`}
+                      >
+                        {periodLabel(item)}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {item.partnerName}
+                      {item.type === 'residual' && item.received !== null
+                        ? ` · ${money(item.received)} received × ${item.percentage}%`
+                        : ' · Bonus'}
+                      {item.repName && ` · ${item.repName}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-white">{money(item.amount)}</span>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setPayingItem({
+                          item,
+                          year:  item.periodYear  ?? year,
+                          month: item.periodMonth ?? month,
+                        })}
+                      >
+                        Log Payment
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Period selector — payouts are normally reconciled a month behind */}
         <div className="flex items-center gap-2 mb-4">
@@ -362,7 +543,7 @@ export function ReferralsClient({
                             <div className="flex items-center gap-3">
                               <span className="text-sm font-semibold text-white">{money(item.amount)}</span>
                               {isAdmin && (
-                                <Button size="sm" variant="secondary" onClick={() => setPayingItem(item)}>
+                                <Button size="sm" variant="secondary" onClick={() => setPayingItem({ item, year, month })}>
                                   Log Payment
                                 </Button>
                               )}
@@ -410,16 +591,20 @@ export function ReferralsClient({
                             size="sm"
                             variant="secondary"
                             onClick={() => setPayingItem({
-                              leadId:       item.leadId,
-                              businessName: item.businessName,
-                              partnerName:  item.partnerName,
-                              partnerId:    item.partnerId,
-                              type:         'residual',
-                              amount:       0,
-                              percentage:   item.percentage,
-                              received:     null,
-                              processor:    null,
-                              repName:      item.repName,
+                              item: {
+                                leadId:       item.leadId,
+                                businessName: item.businessName,
+                                partnerName:  item.partnerName,
+                                partnerId:    item.partnerId,
+                                type:         'residual',
+                                amount:       0,
+                                percentage:   item.percentage,
+                                received:     null,
+                                processor:    null,
+                                repName:      item.repName,
+                              },
+                              year,
+                              month,
                             })}
                           >
                             Add Payment
@@ -506,14 +691,22 @@ export function ReferralsClient({
                             <span className="text-white">{money(Number(p.amount) || 0)}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
                           {isAdmin && (
-                            <button
-                              onClick={() => handleDeletePayment(p.id)}
-                              className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors"
-                            >
-                              Delete
-                            </button>
+                            <div className="flex items-center gap-3 justify-end">
+                              <button
+                                onClick={() => startEditPayment(p)}
+                                className="text-xs text-[var(--text-muted)] hover:text-white transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayment(p.id)}
+                                className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -604,9 +797,10 @@ export function ReferralsClient({
 
       {payingItem && (
         <LogPaymentModal
-          item={payingItem}
-          year={year}
-          month={month}
+          item={payingItem.item}
+          year={payingItem.year}
+          month={payingItem.month}
+          editing={payingItem.editing}
           onClose={() => setPayingItem(null)}
           onLogged={() => {
             setPayingItem(null)

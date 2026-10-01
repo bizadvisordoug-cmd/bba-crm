@@ -10,24 +10,39 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+/** Set when correcting a payout already on the ledger rather than logging a new one. */
+export interface EditingPayment {
+  id: string
+  amount: number
+  date_paid: string
+  notes: string | null
+  no_payment_due: boolean
+}
+
 interface LogPaymentModalProps {
   item: OwedItem
   year: number
   month: number
+  editing?: EditingPayment | null
   onClose: () => void
   onLogged: () => void
 }
 
-export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPaymentModalProps) {
+export function LogPaymentModal({ item, year, month, editing, onClose, onLogged }: LogPaymentModalProps) {
   // When the commission for this period has not been entered, the received
   // figure is unknown — collect it here and derive the partner's cut from it,
-  // rather than making the user do the arithmetic.
-  const needsReceived = item.type === 'residual' && item.received === null
+  // rather than making the user do the arithmetic. An edit already has a
+  // figure on the record, so it never needs this.
+  const needsReceived = !editing && item.type === 'residual' && item.received === null
 
   const [received, setReceived] = useState('')
-  const [amount, setAmount]     = useState(needsReceived ? '' : item.amount.toFixed(2))
-  const [datePaid, setDatePaid] = useState(new Date().toISOString().slice(0, 10))
-  const [notes, setNotes]       = useState('')
+  const [amount, setAmount]     = useState(
+    editing ? editing.amount.toFixed(2) : needsReceived ? '' : item.amount.toFixed(2)
+  )
+  const [datePaid, setDatePaid] = useState(
+    editing ? editing.date_paid.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  )
+  const [notes, setNotes]       = useState(editing?.notes ?? '')
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState('')
 
@@ -48,9 +63,15 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
 
     try {
       const res = await fetch('/api/referrals/payments', {
-        method:  'POST',
+        method:  editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(editing ? {
+          id:         editing.id,
+          amount:     parseFloat(amount),
+          percentage: item.percentage,
+          date_paid:  datePaid,
+          notes:      notes || null,
+        } : {
           lead_id:      item.leadId,
           partner_id:   item.partnerId,
           referred_by:  item.partnerName,
@@ -66,7 +87,7 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error || 'Failed to log payment')
+        setError(data.error || (editing ? 'Failed to update payment' : 'Failed to log payment'))
         return
       }
 
@@ -92,7 +113,9 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
         }}
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-white mb-1">Log Referral Payment</h2>
+        <h2 className="text-lg font-bold text-white mb-1">
+          {editing ? 'Edit Referral Payment' : 'Log Referral Payment'}
+        </h2>
         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
           {item.partnerName} · {item.businessName}
         </p>
@@ -146,12 +169,15 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
             step="0.01"
             min="0"
             required
-            value={amount}
+            disabled={editing?.no_payment_due}
+            value={editing?.no_payment_due ? '0.00' : amount}
             onChange={e => setAmount(e.target.value)}
             hint={
-              item.type === 'residual'
-                ? "Your partner's cut of what the processor paid you for this deal."
-                : undefined
+              editing?.no_payment_due
+                ? 'This period was closed out with nothing due, so the amount stays at zero.'
+                : item.type === 'residual'
+                  ? "Your partner's cut of what the processor paid you for this deal."
+                  : undefined
             }
           />
 
@@ -178,7 +204,7 @@ export function LogPaymentModal({ item, year, month, onClose, onLogged }: LogPay
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={saving}>
-              {saving ? 'Saving...' : 'Log Payment'}
+              {saving ? 'Saving...' : editing ? 'Save Changes' : 'Log Payment'}
             </Button>
           </div>
         </form>
