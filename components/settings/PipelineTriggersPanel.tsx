@@ -26,6 +26,7 @@ const PIPELINE_STAGES = [
   'Equipment Ordered',
   'Install Scheduled',
   'Active Client',
+  'Lost',
 ]
 
 const RECIPIENT_TYPES = [

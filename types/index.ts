@@ -24,6 +24,7 @@ export type PipelineStage =
   | 'Equipment Ordered'
   | 'Install Scheduled'
   | 'Active Client'
+  | 'Lost'
 
 export type LeadStatus = 'Prospect' | 'Active Client' | 'Inactive'
 

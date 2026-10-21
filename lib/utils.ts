@@ -90,6 +90,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   'Equipment Ordered',
   'Install Scheduled',
   'Active Client',
+  'Lost',
 ]
 
 export const PIPELINE_STAGE_COLORS: Record<PipelineStage, string> = {
@@ -101,6 +102,7 @@ export const PIPELINE_STAGE_COLORS: Record<PipelineStage, string> = {
   'Equipment Ordered': 'badge-purple',
   'Install Scheduled': 'badge-blue',
   'Active Client': 'badge-green',
+  'Lost': 'badge-red',
 }
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
