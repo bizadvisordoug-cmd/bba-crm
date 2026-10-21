@@ -119,6 +119,20 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
       return
     }
 
+    // Step 2's phone and email are the lead's own columns — what the CRM list,
+    // the map and the drawer read. Carry the contact details from step 1 over
+    // so they are not silently left behind, whether they were typed for a new
+    // person or already on the one that was picked. Anything already filled in
+    // on step 2 wins, so stepping back and forth cannot clobber an edit.
+    const picked = form.owner_id ? people.find(p => p.id === form.owner_id) : undefined
+    const ownerPhone = form.new_owner_phone.trim() || picked?.phone || ''
+    const ownerEmail = form.new_owner_email.trim() || picked?.email || ''
+    setForm(f => ({
+      ...f,
+      owner_phone: f.owner_phone || ownerPhone,
+      email:       f.email       || ownerEmail,
+    }))
+
     setStep(2)
   }
 
@@ -223,6 +237,18 @@ export function LeadFormModal({ open, onClose, onCreate, reps, currentUserId, in
             .single()
           if (geocoded) finalData = geocoded
         }
+      }
+
+      // The drawer's Notes tab reads lead_notes, so a note typed here has to
+      // land there too — leads.notes alone is written but never displayed.
+      if (form.notes.trim()) {
+        const { error: noteErr } = await supabase.from('lead_notes').insert({
+          lead_id: finalData.id,
+          user_id: currentUserId,
+          note_type: 'other',
+          content: form.notes.trim(),
+        })
+        if (noteErr) console.error('[LeadFormModal] note insert error:', noteErr)
       }
 
       // Log activity
