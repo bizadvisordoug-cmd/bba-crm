@@ -24,6 +24,7 @@ const STAGE_VARIANTS: Record<PipelineStage, BadgeProps['variant']> = {
   'Equipment Ordered': 'purple',
   'Install Scheduled': 'blue',
   'Active Client': 'green',
+  'Lost': 'red',
 }
 
 const STATUS_VARIANTS: Record<LeadStatus, BadgeProps['variant']> = {

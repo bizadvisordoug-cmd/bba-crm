@@ -23,6 +23,7 @@ const DEFAULT_STAGES = [
   { stage: 'Equipment Ordered', days: null },
   { stage: 'Install Scheduled', days: null },
   { stage: 'Active Client', days: null },
+  { stage: 'Lost', days: null },
 ]
 
 export function PipelineRemindersPanel() {

@@ -22,6 +22,7 @@ const STAGE_HEADER_COLORS: Record<PipelineStage, string> = {
   'Equipment Ordered': '#a855f7',
   'Install Scheduled': '#60a5fa',
   'Active Client': '#10b981',
+  'Lost': '#ef4444',
 }
 
 export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {

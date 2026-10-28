@@ -615,6 +615,7 @@ export function PeopleDrawer({ person, open, onClose, onUpdate, onDelete, onView
                 'Equipment Ordered': '#a855f7',
                 'Install Scheduled': '#60a5fa',
                 'Active Client': '#10b981',
+                'Lost': '#ef4444',
               }
               return (
                 <button
