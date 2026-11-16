@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer'
+import { createSmtpTransport } from '@/lib/mailer'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { interpolateTemplate } from '@/lib/utils'
 
@@ -184,12 +184,7 @@ export async function sendCampaignStep(
       return { sent: false, reason: 'Lead has no email address' }
     }
 
-    const transporter = nodemailer.createTransport({
-      host: rep.smtp_host,
-      port: rep.smtp_port || 587,
-      secure: rep.smtp_ssl === true || rep.smtp_port === 465,
-      auth: { user: rep.smtp_user, pass: rep.smtp_pass },
-    })
+    const transporter = createSmtpTransport(rep)
 
     const unsubLink = `${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?enrollment=${enrollmentId}`
 

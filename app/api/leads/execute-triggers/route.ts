@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import nodemailer from 'nodemailer'
+import { createSmtpTransport } from '@/lib/mailer'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     // Get SMTP config from any admin account (owner or vp_operations)
     const { data: adminUsers, error: adminError } = await supabase
       .from('users')
-      .select('id, smtp_host, smtp_port, smtp_user, smtp_pass, name, role')
+      .select('id, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_ssl, name, role')
       .in('role', ['owner', 'vp_operations'])
 
     if (adminError) {
@@ -83,15 +83,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Triggers] SMTP configured for: ${ownerUser.smtp_user}`)
 
-    const transporter = nodemailer.createTransport({
-      host: ownerUser.smtp_host,
-      port: ownerUser.smtp_port || 587,
-      secure: false,
-      auth: {
-        user: ownerUser.smtp_user,
-        pass: ownerUser.smtp_pass,
-      },
-    })
+    const transporter = createSmtpTransport(ownerUser)
 
     let emailsSent = 0
     const executionLog: any[] = []

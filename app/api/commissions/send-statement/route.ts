@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import { createSmtpTransport } from '@/lib/mailer'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         .order('created_at'),
       supabase
         .from('users')
-        .select('name, email, smtp_host, smtp_port, smtp_user, smtp_pass')
+        .select('name, email, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_ssl')
         .eq('role', 'owner')
         .maybeSingle(),
     ])
@@ -156,12 +156,7 @@ export async function POST(req: NextRequest) {
       paidDate,
     })
 
-    const transporter = nodemailer.createTransport({
-      host: owner.smtp_host,
-      port: owner.smtp_port ?? 587,
-      secure: (owner.smtp_port ?? 587) === 465,
-      auth: { user: owner.smtp_user, pass: owner.smtp_pass },
-    })
+    const transporter = createSmtpTransport(owner)
 
     await transporter.sendMail({
       from: `"${owner.name}" <${owner.smtp_user}>`,

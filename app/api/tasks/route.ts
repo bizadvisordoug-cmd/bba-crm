@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import { createSmtpTransport } from '@/lib/mailer'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       // Get assigned person details
       const { data: assignedUser } = await serviceSupabase
         .from('users')
-        .select('id, name, email, smtp_host, smtp_port, smtp_user, smtp_pass')
+        .select('id, name, email, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_ssl')
         .eq('id', assigned_to)
         .single()
 
@@ -74,21 +74,13 @@ export async function POST(request: NextRequest) {
         // Get SMTP config from any admin
         const { data: adminUsers } = await serviceSupabase
           .from('users')
-          .select('smtp_host, smtp_port, smtp_user, smtp_pass, role')
+          .select('smtp_host, smtp_port, smtp_user, smtp_pass, smtp_ssl, role')
           .in('role', ['owner', 'vp_operations'])
 
         const smtpConfig = adminUsers?.find(u => u.smtp_host && u.smtp_user && u.smtp_pass)
 
         if (smtpConfig) {
-          const transporter = nodemailer.createTransport({
-            host: smtpConfig.smtp_host,
-            port: smtpConfig.smtp_port || 587,
-            secure: false,
-            auth: {
-              user: smtpConfig.smtp_user,
-              pass: smtpConfig.smtp_pass,
-            },
-          })
+          const transporter = createSmtpTransport(smtpConfig)
 
           const dueDate = new Date(due_date).toLocaleDateString()
           const emailBody = `

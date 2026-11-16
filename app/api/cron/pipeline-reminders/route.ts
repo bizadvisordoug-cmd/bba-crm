@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import { createSmtpTransport } from '@/lib/mailer'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export const runtime = 'nodejs'
@@ -78,14 +78,14 @@ export async function GET(req: NextRequest) {
     // Send emails to each user
     let emailsSent = 0
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SSL === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+    // This route is the odd one out: its SMTP comes from env vars, not a user
+    // row. Same transport rules apply, so it goes through the same helper.
+    const transporter = createSmtpTransport({
+      smtp_host: process.env.SMTP_HOST,
+      smtp_port: parseInt(process.env.SMTP_PORT || '587'),
+      smtp_user: process.env.SMTP_USER,
+      smtp_pass: process.env.SMTP_PASS,
+      smtp_ssl:  process.env.SMTP_SSL === 'true',
     })
 
     for (const [userId, { email, stageMap }] of Object.entries(emailsByUser)) {
