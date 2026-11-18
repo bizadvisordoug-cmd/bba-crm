@@ -1,11 +1,18 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, ImageIcon, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase'
+import {
+  HEADER_MAX_W,
+  BODY_MAX_W,
+  uploadEmailImage,
+  buildBodyImgTag,
+  measureImage,
+} from '@/lib/email-images'
 
 const TOKENS = ['[FirstName]', '[BusinessName]', '[RepName]', '[SystemName]']
 
@@ -30,6 +37,8 @@ interface DraftStep {
   delay_days: number
   subject: string
   body: string
+  header_image_url: string
+  header_image_width: number
   expanded: boolean
 }
 
@@ -46,6 +55,8 @@ function makeDraftStep(expanded = true): DraftStep {
     delay_days: 0,
     subject: '',
     body: '',
+    header_image_url: '',
+    header_image_width: HEADER_MAX_W,
     expanded,
   }
 }
@@ -59,9 +70,18 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
   const [meta, setMeta] = useState({ name: '', type: 'cold_prospect', description: '' })
   const [steps, setSteps] = useState<DraftStep[]>([makeDraftStep()])
 
+  // Which step is mid-upload, so only that step's control shows a spinner
+  const [uploadingHeaderFor, setUploadingHeaderFor] = useState<string | null>(null)
+  const [uploadingBodyFor, setUploadingBodyFor]     = useState<string | null>(null)
+
   const bodyRefs = useRef<Record<string, HTMLTextAreaElement | null>>({})
   const subjectRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const lastFocusRef = useRef<{ stepId: string; field: 'subject' | 'body' } | null>(null)
+  // Cursor position per step body, snapshotted as it moves — opening the file
+  // dialog takes focus away, so it cannot be read at upload time.
+  const bodySelRef = useRef<Record<string, { start: number; end: number }>>({})
+  const headerInputs = useRef<Record<string, HTMLInputElement | null>>({})
+  const bodyInputs   = useRef<Record<string, HTMLInputElement | null>>({})
 
   const handleClose = () => {
     setPage(1)
@@ -82,6 +102,13 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
 
   const removeStep = (localId: string) =>
     setSteps(prev => prev.filter(s => s.localId !== localId))
+
+  const rememberBodySelection = (stepId: string, el: HTMLTextAreaElement) => {
+    bodySelRef.current[stepId] = {
+      start: el.selectionStart ?? el.value.length,
+      end:   el.selectionEnd   ?? el.value.length,
+    }
+  }
 
   const insertToken = (token: string) => {
     const focus = lastFocusRef.current
@@ -112,6 +139,65 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
     }
   }
 
+  // ── Image uploads ──────────────────────────────────────────────────────────
+  // Inserted at a sensible default size, centred and ratio-locked. Resizing and
+  // alignment live in the full step editor, reachable once the campaign exists.
+
+  const handleHeaderUpload = async (stepId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploadingHeaderFor(stepId)
+    setError('')
+    try {
+      const url = await uploadEmailImage(supabase, file, 'headers')
+      updateStep(stepId, { header_image_url: url, header_image_width: HEADER_MAX_W })
+    } catch {
+      setError('Header image upload failed — check the email-images bucket exists.')
+    } finally {
+      setUploadingHeaderFor(null)
+    }
+  }
+
+  const handleBodyImageUpload = async (stepId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setUploadingBodyFor(stepId)
+    setError('')
+    try {
+      const url = await uploadEmailImage(supabase, file, 'body')
+
+      let displayW = BODY_MAX_W
+      let displayH = 300
+      try {
+        const { w, h } = await measureImage(url)
+        if (w > 0 && h > 0) {
+          displayW = Math.min(w, BODY_MAX_W)
+          displayH = Math.round((displayW / w) * h)
+        }
+      } catch {
+        // Fall back to defaults — the tag is ratio-locked, so height is advisory
+      }
+
+      const tag = buildBodyImgTag({
+        url, width: displayW, height: displayH, lockRatio: true, align: 'center',
+      })
+
+      const sel = bodySelRef.current[stepId]
+      setSteps(prev => prev.map(s => {
+        if (s.localId !== stepId) return s
+        const start = sel?.start ?? s.body.length
+        const end   = sel?.end   ?? s.body.length
+        return { ...s, body: s.body.slice(0, start) + '\n' + tag + '\n' + s.body.slice(end) }
+      }))
+    } catch {
+      setError('Image upload failed — check the email-images bucket exists.')
+    } finally {
+      setUploadingBodyFor(null)
+    }
+  }
+
   const handleCreate = async () => {
     if (!meta.name.trim()) { setError('Campaign name is required'); return }
     if (steps.length === 0) { setError('Add at least one step'); return }
@@ -134,6 +220,9 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
         delay_days: s.delay_days,
         subject: s.type === 'email' ? (s.subject || null) : null,
         body: s.body,
+        // Header image is email-only, matching the step editor
+        header_image_url:   s.type === 'email' ? (s.header_image_url || null) : null,
+        header_image_width: s.type === 'email' && s.header_image_url ? s.header_image_width : null,
       }))
       const { data: createdSteps, error: stepsErr } = await supabase
         .from('campaign_steps')
@@ -294,15 +383,89 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
                       </div>
                     )}
 
+                    {/* Header image — email only, same field the step editor uses */}
+                    {step.type === 'email' && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                          Email Header Image
+                        </label>
+                        <input
+                          ref={el => { headerInputs.current[step.localId] = el }}
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.gif,.webp"
+                          className="hidden"
+                          onChange={e => handleHeaderUpload(step.localId, e)}
+                        />
+                        {step.header_image_url ? (
+                          <div className="relative rounded-xl overflow-hidden border border-white/[0.08] bg-white/[0.02] p-2">
+                            <img
+                              src={step.header_image_url}
+                              alt=""
+                              style={{ width: step.header_image_width, maxWidth: '100%', height: 'auto', display: 'block' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateStep(step.localId, { header_image_url: '' })}
+                              className="absolute top-3 right-3 p-1 rounded-lg bg-black/60 text-white hover:bg-red-500/70 transition-colors"
+                              title="Remove header image"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => headerInputs.current[step.localId]?.click()}
+                            disabled={uploadingHeaderFor === step.localId}
+                            className="w-full py-3 rounded-xl border border-dashed border-white/20 text-xs text-[var(--text-secondary)] hover:border-purple-500/40 hover:text-white hover:bg-white/[0.03] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            <ImageIcon size={14} />
+                            {uploadingHeaderFor === step.localId ? 'Uploading…' : 'Upload header image'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                        {step.type === 'email' ? 'Body' : 'Message'}
-                      </label>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                          {step.type === 'email' ? 'Body' : 'Message'}
+                        </label>
+                        {step.type === 'email' && (
+                          <>
+                            <input
+                              ref={el => { bodyInputs.current[step.localId] = el }}
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.gif,.webp"
+                              className="hidden"
+                              onChange={e => handleBodyImageUpload(step.localId, e)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => bodyInputs.current[step.localId]?.click()}
+                              disabled={uploadingBodyFor === step.localId}
+                              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                            >
+                              <ImageIcon size={11} />
+                              {uploadingBodyFor === step.localId ? 'Uploading…' : 'Insert Image'}
+                            </button>
+                          </>
+                        )}
+                      </div>
                       <textarea
                         ref={el => { bodyRefs.current[step.localId] = el }}
                         value={step.body}
-                        onChange={e => updateStep(step.localId, { body: e.target.value })}
-                        onFocus={() => { lastFocusRef.current = { stepId: step.localId, field: 'body' } }}
+                        onChange={e => {
+                          updateStep(step.localId, { body: e.target.value })
+                          rememberBodySelection(step.localId, e.target)
+                        }}
+                        onFocus={e => {
+                          lastFocusRef.current = { stepId: step.localId, field: 'body' }
+                          rememberBodySelection(step.localId, e.target)
+                        }}
+                        onSelect={e => rememberBodySelection(step.localId, e.currentTarget)}
+                        onKeyUp={e => rememberBodySelection(step.localId, e.currentTarget)}
+                        onClick={e => rememberBodySelection(step.localId, e.currentTarget)}
                         rows={6}
                         placeholder={
                           step.type === 'email'
@@ -311,6 +474,11 @@ export function CampaignCreateModal({ open, onClose, onCreated }: CampaignCreate
                         }
                         className="w-full rounded-xl px-3 py-2 text-sm resize-y bg-white/[0.04] border border-white/[0.08] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.07] transition-all font-mono leading-relaxed"
                       />
+                      {step.type === 'email' && step.body.includes('<img') && (
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                          Images insert centred at full width. Open the step after creating to resize or realign.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}

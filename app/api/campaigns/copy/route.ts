@@ -32,9 +32,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the original campaign steps
+    // Select every content column — omitting one silently strips it from the
+    // copy, which is how header images and footers were being lost.
     const { data: originalSteps, error: stepsError } = await supabase
       .from('campaign_steps')
-      .select('step_number, type, delay_days, subject, body')
+      .select('step_number, type, delay_days, subject, body, header_image_url, header_image_width, footer_text')
       .eq('campaign_id', campaignId)
       .order('step_number')
 
@@ -75,6 +77,9 @@ export async function POST(request: NextRequest) {
         delay_days: step.delay_days,
         subject: step.subject,
         body: step.body,
+        header_image_url:   step.header_image_url,
+        header_image_width: step.header_image_width,
+        footer_text:        step.footer_text,
       }))
 
       const { error: insertStepsError } = await supabase

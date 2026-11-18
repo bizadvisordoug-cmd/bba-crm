@@ -6,10 +6,15 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase'
+import {
+  HEADER_MAX_W,
+  BODY_MAX_W,
+  uploadEmailImage,
+  buildBodyImgTag,
+  type ImgAlign,
+} from '@/lib/email-images'
 
 const TOKENS = ['[FirstName]', '[BusinessName]', '[RepName]', '[SystemName]']
-const HEADER_MAX_W = 600
-const BODY_MAX_W   = 560
 
 // ── Resize handle ──────────────────────────────────────────────────────────────
 // Dragging right = wider, left = narrower. Fires onResize(newWidth) continuously.
@@ -120,7 +125,6 @@ interface Step {
   footer_text?: string | null
 }
 
-type ImgAlign = 'left' | 'center' | 'right'
 
 interface PendingBodyImg {
   url: string
@@ -359,13 +363,8 @@ export function CampaignStepModal({
 
   // ── Image uploads ────────────────────────────────────────────────────────────
 
-  const uploadImage = async (file: File, folder: 'headers' | 'body') => {
-    const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const path = `${folder}/${crypto.randomUUID()}.${ext}`
-    const { error: upErr } = await supabase.storage.from('email-images').upload(path, file, { upsert: false })
-    if (upErr) throw upErr
-    return supabase.storage.from('email-images').getPublicUrl(path).data.publicUrl
-  }
+  const uploadImage = (file: File, folder: 'headers' | 'body') =>
+    uploadEmailImage(supabase, file, folder)
 
   const handleHeaderImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -416,12 +415,9 @@ export function CampaignStepModal({
   const insertPendingBodyImg = () => {
     if (!pendingBodyImg) return
     const { url, displayW, displayH, lockRatio, align, editRange } = pendingBodyImg
-    const heightStyle = lockRatio ? 'height:auto' : `height:${displayH}px`
-    const margin =
-      align === 'left'  ? '12px auto 12px 0' :
-      align === 'right' ? '12px 0 12px auto' :
-                           '12px auto'
-    const tag = `<img src="${url}" alt="" data-align="${align}" style="width:${displayW}px;${heightStyle};max-width:100%;display:block;margin:${margin};text-align:${align};">`
+    const tag = buildBodyImgTag({
+      url, width: displayW, height: displayH, lockRatio, align,
+    })
 
     if (editRange) {
       setForm(f => ({ ...f, body: f.body.slice(0, editRange.start) + tag + f.body.slice(editRange.end) }))
